@@ -1,48 +1,50 @@
 package com.quocbao.projectmanager.exception;
 
-import java.time.LocalDateTime;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.quocbao.projectmanager.common.ErrorResponse;
-import com.quocbao.projectmanager.common.ExceptionResponse;
 
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ResourceNotFoundException.class)
-	public ResponseEntity<ExceptionResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
-		ExceptionResponse exceptionResponse = new ExceptionResponse(HttpStatus.NOT_FOUND.value(), "Resouce Not Found",
-				LocalDateTime.now(), ex.getMessage());
-		return new ResponseEntity<>(exceptionResponse, HttpStatus.NOT_FOUND);
+	public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex) {
+		ErrorResponse errorResponse = new ErrorResponse();
+		errorResponse.setTitle("Resouce Not Found.");
+		errorResponse.setStatus(HttpStatus.NOT_FOUND.value());
+		errorResponse.setDetail(ex.getMessage());
+		return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
 	}
 
 	@ExceptionHandler(ConstraintViolationException.class)
-	public ResponseEntity<ErrorResponse> handleValidationException(ConstraintViolationException ex) {
+	public ResponseEntity<ErrorResponse> handleConstraintViolationException(ConstraintViolationException ex) {
 		ErrorResponse errorResponse = new ErrorResponse();
-		ErrorResponse.Error error = errorResponse.new Error();
-		ErrorResponse.Error.Detail detail = errorResponse.new Error().new Detail();
-		error.setCode("INVALID_INPUT");
-		error.setMessage("The provided input is not valid.");
+		errorResponse.setTitle("The provided input is not valid.");
 		errorResponse.setStatus(HttpStatus.BAD_REQUEST.value());
-		errorResponse.setError(error);
-		ex.getConstraintViolations().forEach(e -> {
-			detail.setField(e.getPropertyPath().toString());
-			detail.setIssue(e.getMessage());
-			error.setDetail(detail);
-		});
+		errorResponse.setDetail(
+				// The exception will be caught in the entity or in the service.
+				ex.getConstraintViolations() == null
+						// If an exception is encountered in the service.
+						// Will get message from ex.getMessage, handle by
+						? ex.getMessage()
+						// If an exception is encountered in the entity, handle by
+						: ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage).toList()
+								.getFirst());
 		return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
 	}
 
 	@ExceptionHandler(DuplicateException.class)
-	public ResponseEntity<ExceptionResponse> handleDuplicateException(DuplicateException ex) {
-		ExceptionResponse exceptionResponse = new ExceptionResponse(HttpStatus.CONFLICT.value(),
-				"The provided input already exists", LocalDateTime.now(), ex.getMessage());
-		return new ResponseEntity<>(exceptionResponse, HttpStatus.UNPROCESSABLE_ENTITY);
+	public ResponseEntity<ErrorResponse> handleDuplicateException(DuplicateException ex) {
+		ErrorResponse errorResponse = new ErrorResponse();
+		errorResponse.setTitle("The provided input already exists.");
+		errorResponse.setStatus(HttpStatus.UNPROCESSABLE_ENTITY.value());
+		errorResponse.setDetail(ex.getMessage());
+		return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
 	}
 }
