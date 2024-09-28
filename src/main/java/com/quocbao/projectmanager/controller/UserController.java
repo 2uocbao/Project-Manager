@@ -52,7 +52,7 @@ public class UserController {
 	}
 
 	@PutMapping("/{userId}")
-	public ResponseEntity<DataResponse> updateUser(@PathVariable Long userId,
+	public ResponseEntity<DataResponse> updateUser(@Valid @PathVariable Long userId,
 			@Valid @RequestBody UserRequest userRequest) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.updateUser(userId, userRequest))
 				.add(linkGetUser(userId)).add(linkGetFriendsByUserId(userId));
@@ -71,11 +71,18 @@ public class UserController {
 	}
 
 	@PostMapping("/register")
-	public ResponseEntity<DataResponse> register(@RequestBody LoginRequest loginRequest) {
-		UserResponse userResponse = userService.registerUser(loginRequest);
+	public ResponseEntity<DataResponse> register(@Valid @RequestBody UserRequest userRequest) {
+		UserResponse userResponse = userService.registerUser(userRequest);
 		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse)
 				.add(linkUpdateUser(userResponse.getId(), new UserRequest()));
 		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModel, REQUESTSUCCESS),
+				HttpStatus.OK);
+	}
+
+	@PutMapping("/updatePassword")
+	public ResponseEntity<DataResponse> updatePassword(@Valid @RequestBody LoginRequest loginRequest) {
+		return new ResponseEntity<>(
+				new DataResponse(HttpStatus.OK.value(), userService.updatePassword(loginRequest), REQUESTSUCCESS),
 				HttpStatus.OK);
 	}
 
