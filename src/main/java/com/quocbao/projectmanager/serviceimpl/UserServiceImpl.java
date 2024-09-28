@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.quocbao.projectmanager.entity.Role;
 import com.quocbao.projectmanager.entity.User;
+import com.quocbao.projectmanager.entity.User_;
 import com.quocbao.projectmanager.entity.Friend;
 import com.quocbao.projectmanager.exception.DuplicateException;
 import com.quocbao.projectmanager.exception.ResourceNotFoundException;
@@ -26,6 +27,7 @@ import com.quocbao.projectmanager.service.UserService;
 import com.quocbao.projectmanager.specification.UserSpecification;
 
 import jakarta.transaction.Transactional;
+import jakarta.validation.ConstraintViolationException;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -56,6 +58,13 @@ public class UserServiceImpl implements UserService {
 	@Transactional
 	public UserResponse updateUser(Long userId, UserRequest userRequest) {
 		userRepository.findById(userId).ifPresent(u -> {
+			// if the requested data do not constant with data retrieve, check duplicate
+			if (!userRequest.getPhoneNumber().equals(u.getPhoneNumber())) {
+				isDuplicatePhoneNumber(userRequest.getPhoneNumber());
+			}
+			if (!userRequest.getEmail().equals(u.getEmail())) {
+				isDuplicateEmail(userRequest.getEmail());
+			}
 			u.updateUser(userRequest);
 			userRepository.save(u);
 		});
@@ -80,14 +89,12 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	@Transactional
-	public UserResponse registerUser(LoginRequest loginRequest) {
-		if (userRepository
-				.count(Specification.where(UserSpecification.hasPhoneNumber(loginRequest.getUsername()))) > 0) {
-			throw new DuplicateException("Username already exists");
-		}
+	public UserResponse registerUser(UserRequest userRequest) {
+		isDuplicatePhoneNumber(userRequest.getPhoneNumber());
+		isValidPassword(userRequest.getPassword());
 		User user = new User();
-		user.setPhoneNumber(loginRequest.getUsername());
-		user.setPassword(bCryptPasswordEncoder.encode(loginRequest.getPassword()));
+		user.setPhoneNumber(userRequest.getPhoneNumber());
+		user.setPassword(userRequest.getPassword());
 		user.setRoles(getRoles((long) 1));
 		userRepository.save(user);
 		UserResponse userResponse = new UserResponse(user);
@@ -117,8 +124,18 @@ public class UserServiceImpl implements UserService {
 		return users.stream().map(UserResponse::new).toList();
 	}
 
+	@Override
+	public String updatePassword(LoginRequest loginRequest) {
+		isValidPassword(loginRequest.getPassword());
+		getUserByPhoneNumber(loginRequest.getUsername()).ifPresent(u -> {
+			u.setPassword(bCryptPasswordEncoder.encode(loginRequest.getPassword()));
+			userRepository.save(u);
+		});
+		return "Password update successful";
+	}
+
 	private Optional<User> getUserByPhoneNumber(String phoneNumber) {
-		Specification<User> spec = Specification.where(UserSpecification.hasPhoneNumber(phoneNumber));
+		Specification<User> spec = Specification.where(UserSpecification.findByColumn(User_.phoneNumber, phoneNumber));
 		return userRepository.findOne(spec);
 	}
 
@@ -126,6 +143,37 @@ public class UserServiceImpl implements UserService {
 		List<Role> roles = new ArrayList<>();
 		roles.add(roleRepository.findById(roleId).orElse(Role.builder().id((roleId)).build()));
 		return roles;
+	}
+
+	private void isDuplicatePhoneNumber(String phoneNumber) {
+		if (userRepository
+				.count(Specification.where(UserSpecification.findByColumn(User_.phoneNumber, phoneNumber))) > 0) {
+			throw new DuplicateException(
+					"The phone number you entered is already registered. Please try a different number.");
+		}
+	}
+
+	private void isDuplicateEmail(String email) {
+		if (email != null
+				&& userRepository.count(Specification.where(UserSpecification.findByColumn(User_.email, email))) > 0) {
+			throw new DuplicateException("The email you entered is already registered. Please try a different email.");
+		}
+
+	}
+
+	private void isValidPassword(String password) {
+		// Regular Expression:
+		// Minimum length of 8 characters: {8,}
+		// At least one uppercase letter: (?=.*[A-Z])
+		// At least one lowercase letter: (?=.*[a-z])
+		// At least one digit
+		// At least one special character (@$!%*?&).
+		String regex = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+		if (!password.matches(regex)) {
+			// Set the message for this to be received in the exception handler.
+			// Because can not add message to set constraint violation.
+			throw new ConstraintViolationException("Password cannot be null or contain special characters", null);
+		}
 	}
 
 }
