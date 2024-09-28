@@ -7,7 +7,6 @@ import com.quocbao.projectmanager.entity.Friend_;
 import com.quocbao.projectmanager.entity.User;
 import com.quocbao.projectmanager.entity.User_;
 
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.metamodel.SingularAttribute;
@@ -29,9 +28,7 @@ public class UserSpecification {
 			Root<Friend> rootFriend = subquery.from(Friend.class);
 			subquery.select(rootFriend.get(Friend_.friendId));
 			subquery.where(criteriaBuilder.equal(rootFriend.get(Friend_.userId), userId));
-			Predicate predicate = criteriaBuilder.in(root.get(User_.id)).value(subquery);
-			query.where(predicate);
-			return predicate;
+			return criteriaBuilder.in(root.get(User_.id)).value(subquery);
 		};
 	}
 }
