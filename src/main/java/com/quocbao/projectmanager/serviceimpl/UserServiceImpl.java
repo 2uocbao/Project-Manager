@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
 	@Override
 	@Transactional
 	public UserResponse updateUser(Long userId, UserRequest userRequest) {
-		userRepository.findById(userId).ifPresent(u -> {
+		return userRepository.findById(userId).map(u -> {
 			// if the requested data do not constant with data retrieve, check duplicate
 			if (!userRequest.getPhoneNumber().equals(u.getPhoneNumber())) {
 				isDuplicatePhoneNumber(userRequest.getPhoneNumber());
@@ -67,10 +67,8 @@ public class UserServiceImpl implements UserService {
 			}
 			u.updateUser(userRequest);
 			userRepository.save(u);
-		});
-		UserResponse userResponse = new UserResponse(new User(userRequest));
-		userResponse.setId(userId);
-		return userResponse;
+			return new UserResponse(u);
+		}).orElseThrow(() -> new ResourceNotFoundException("User not found with id:" + userId.toString()));
 	}
 
 	@Override
