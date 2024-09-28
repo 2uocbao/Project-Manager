@@ -53,11 +53,9 @@ public class SecurityConfig {
 		return (request, response, authException) -> {
 			response.setStatus(HttpStatus.FORBIDDEN.value());
 			ErrorResponse errorResponse = new ErrorResponse();
-			ErrorResponse.Error error = errorResponse.new Error();
 			errorResponse.setStatus(HttpStatus.FORBIDDEN.value());
-			error.setCode(HttpStatus.FORBIDDEN.toString());
-			error.setMessage("Access Denied: You don't have permission to access this resource.");
-			errorResponse.setError(error);
+			errorResponse.setTitle("ERROR AUTHENTICATE");
+			errorResponse.setDetail("Access Denied: Unauthorized Access - Invalid or Expired Token");
 			ObjectMapper objectMapper = new ObjectMapper();
 			String jsonResponse = objectMapper.writeValueAsString(errorResponse);
 			response.getWriter().write(jsonResponse);
