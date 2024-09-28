@@ -22,6 +22,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
@@ -48,11 +49,12 @@ public class User implements UserDetails {
 	private String lastName;
 
 	@NotBlank(message = "Phone cannot be blank")
-	@Pattern(regexp = "^\\d{9,10}$", message = "Invalid Phone number")
+	@Pattern(regexp = "^\\d{10,11}$", message = "Invalid Phone number")
 	@Column(name = "phone_number")
 	private String phoneNumber;
 
 	@Column(name = "email")
+	@Email(message = "Invalid email format")
 	private String email;
 
 	@Column(name = "password")
