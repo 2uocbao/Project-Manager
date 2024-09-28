@@ -16,9 +16,11 @@ public interface UserService extends UserDetailsService {
 
 	public UserResponse loginUser(LoginRequest loginRequest);
 
-	public UserResponse registerUser(LoginRequest loginRequest);
+	public UserResponse registerUser(UserRequest userRequest);
 
 	public String confirmFriendRequest(Long fromUser, Long toUser);
 
 	public List<UserResponse> getFriendsByUserId(Long userId);
+	
+	public String updatePassword(LoginRequest loginRequest);
 }
