@@ -81,7 +81,6 @@ public class UserServiceImpl implements UserService {
 		if (!bCryptPasswordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
 			throw new ResourceNotFoundException(USERUNCORRECT);
 		}
-		loadUserByUsername(loginRequest.getUsername());
 		UserResponse userResponse = new UserResponse(user);
 		userResponse.setToken(jwtTokenProvider.generateToken(user.userDetails(user)));
 		return userResponse;
