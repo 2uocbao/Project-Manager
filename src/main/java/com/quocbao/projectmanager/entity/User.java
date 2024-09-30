@@ -70,6 +70,10 @@ public class User implements UserDetails {
 
 	@OneToMany
 	private Set<Friend> friends;
+	
+	@OneToMany
+	private List<Project> projects;
+	
 
 	public User() {
 
