@@ -14,6 +14,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,8 +38,6 @@ public class UserController {
 
 	private UserService userService;
 
-	static final String REQUESTSUCCESS = "Request Successfully";
-
 	public UserController(UserService userService) {
 		this.userService = userService;
 	}
@@ -46,8 +45,10 @@ public class UserController {
 	@GetMapping()
 	public ResponseEntity<DataResponse> getUser(@RequestParam Long userId) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.getUser(userId));
-		entityModel.add(linkUpdateUser(userId, new UserRequest())).add(linkGetFriendsByUserId(userId));
-		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModel, REQUESTSUCCESS),
+		entityModel.add(linkUpdateUser(userId, new UserRequest())).add(linkGetFriendsByUserId(userId))
+				.add(linkProjectsOfUser(userId, null));
+		return new ResponseEntity<>(
+				new DataResponse(HttpStatus.OK.value(), entityModel, "User creation request successful."),
 				HttpStatus.OK);
 	}
 
@@ -56,7 +57,8 @@ public class UserController {
 			@Valid @RequestBody UserRequest userRequest) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.updateUser(userId, userRequest))
 				.add(linkGetUser(userId)).add(linkGetFriendsByUserId(userId));
-		DataResponse dataResponse = new DataResponse(HttpStatus.OK.value(), entityModel, REQUESTSUCCESS);
+		DataResponse dataResponse = new DataResponse(HttpStatus.OK.value(), entityModel,
+				"User information update successful.");
 		return new ResponseEntity<>(dataResponse, HttpStatus.OK);
 	}
 
@@ -66,7 +68,7 @@ public class UserController {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse).add(linkGetUser(userResponse.getId()))
 				.add(linkUpdateUser(userResponse.getId(), new UserRequest()))
 				.add(linkGetFriendsByUserId(userResponse.getId()));
-		return new ResponseEntity<>(new DataResponse(HttpStatus.ACCEPTED.value(), entityModel, REQUESTSUCCESS),
+		return new ResponseEntity<>(new DataResponse(HttpStatus.ACCEPTED.value(), entityModel, "Login successful."),
 				HttpStatus.ACCEPTED);
 	}
 
@@ -75,29 +77,29 @@ public class UserController {
 		UserResponse userResponse = userService.registerUser(userRequest);
 		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse)
 				.add(linkUpdateUser(userResponse.getId(), new UserRequest()));
-		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModel, REQUESTSUCCESS),
+		return new ResponseEntity<>(
+				new DataResponse(HttpStatus.OK.value(), entityModel, "Account creation request successful."),
 				HttpStatus.OK);
 	}
 
-	@PutMapping("/updatePassword")
+	@PatchMapping("/updatePassword")
 	public ResponseEntity<DataResponse> updatePassword(@Valid @RequestBody LoginRequest loginRequest) {
-		return new ResponseEntity<>(
-				new DataResponse(HttpStatus.OK.value(), userService.updatePassword(loginRequest), REQUESTSUCCESS),
-				HttpStatus.OK);
+		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), userService.updatePassword(loginRequest),
+				"User password update request success."), HttpStatus.OK);
 	}
 
 	@PostMapping("/confirm-friend-request")
 	public ResponseEntity<DataResponse> confirmFriendRequest(@RequestParam Long fromUserId,
 			@RequestParam Long toUserId) {
 		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(),
-				userService.confirmFriendRequest(fromUserId, toUserId), REQUESTSUCCESS), HttpStatus.OK);
+				userService.confirmFriendRequest(fromUserId, toUserId), "Friend request successfull."), HttpStatus.OK);
 	}
 
 	@GetMapping("/{userId}/friends")
 	public ResponseEntity<DataResponse> getFriendsByUserId(@PathVariable Long userId) {
 		List<EntityModel<UserResponse>> entityModels = userService.getFriendsByUserId(userId).stream()
 				.map(userResponse -> EntityModel.of(userResponse).add(linkGetUser(userResponse.getId()))).toList();
-		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModels, REQUESTSUCCESS),
+		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModels, "Friends of user."),
 				HttpStatus.OK);
 	}
 
@@ -107,7 +109,7 @@ public class UserController {
 			@Payload FriendRequest friendRequest) {
 		DataResponse dataResponse = new DataResponse(HttpStatus.OK.value(),
 				"You have friend request from " + friendRequest.getFromUserName() + " " + friendRequest.getFromUser(),
-				REQUESTSUCCESS);
+				"Notification");
 		return new ResponseEntity<>(dataResponse, HttpStatus.OK);
 	}
 
@@ -124,5 +126,10 @@ public class UserController {
 	private Link linkGetFriendsByUserId(Long userId) {
 		return linkTo(methodOn(UserController.class).getFriendsByUserId(userId)).withRel("get")
 				.withTitle("Get list friends of user by user id").withType("GET");
+	}
+
+	private Link linkProjectsOfUser(Long userId, String status) {
+		return linkTo(methodOn(ProjectController.class).getProjectsByStatusAndDate(userId, status)).withRel("projects")
+				.withTitle("Get list project of user by user id").withType("GET");
 	}
 }
