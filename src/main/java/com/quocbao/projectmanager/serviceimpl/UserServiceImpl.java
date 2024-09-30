@@ -55,7 +55,6 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@Transactional
 	public UserResponse updateUser(Long userId, UserRequest userRequest) {
 		return userRepository.findById(userId).map(u -> {
 			// if the requested data do not constant with data retrieve, check duplicate
@@ -72,7 +71,6 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@Transactional
 	public UserResponse loginUser(LoginRequest loginRequest) {
 		User user = getUserByPhoneNumber(loginRequest.getUsername())
 				.orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
@@ -85,13 +83,12 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@Transactional
 	public UserResponse registerUser(UserRequest userRequest) {
 		isDuplicatePhoneNumber(userRequest.getPhoneNumber());
 		isValidPassword(userRequest.getPassword());
 		User user = new User();
 		user.setPhoneNumber(userRequest.getPhoneNumber());
-		user.setPassword(userRequest.getPassword());
+		user.setPassword(bCryptPasswordEncoder.encode(userRequest.getPassword()));
 		user.setRoles(getRoles((long) 1));
 		userRepository.save(user);
 		UserResponse userResponse = new UserResponse(user);
@@ -108,7 +105,6 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@Transactional
 	public String confirmFriendRequest(Long fromUser, Long toUser) {
 		friendRepository.save(new Friend(fromUser, toUser));
 		return "Success";
