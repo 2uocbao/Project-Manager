@@ -1,7 +1,5 @@
 package com.quocbao.projectmanager.payload.request;
 
-import java.sql.Timestamp;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Getter;
@@ -16,5 +14,8 @@ public class ProjectRequest {
 	private String description;
 
 	@JsonProperty("date_end")
-	private Timestamp dateEnd;
+	private String dateEnd;
+
+	@JsonProperty("status")
+	private String status;
 }
