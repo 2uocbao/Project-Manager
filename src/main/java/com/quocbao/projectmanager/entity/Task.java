@@ -1,10 +1,12 @@
 package com.quocbao.projectmanager.entity;
 
 import java.io.Serializable;
-import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.Date;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.quocbao.projectmanager.common.ConvertData;
 import com.quocbao.projectmanager.payload.request.TaskRequest;
 
 import jakarta.persistence.CascadeType;
@@ -16,17 +18,21 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+@Builder
 @Entity
 @Getter
 @Table(name = "task")
 @Setter
+@AllArgsConstructor
 public class Task implements Serializable {
 
 	/**
@@ -38,9 +44,11 @@ public class Task implements Serializable {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@NotBlank(message = "Name can not be blank")
 	@Column(name = "name")
 	private String name;
 
+	@NotBlank(message = "Description can not be blank")
 	@Column(name = "description")
 	private String description;
 
@@ -56,18 +64,18 @@ public class Task implements Serializable {
 	@CreationTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created_at")
-	private Timestamp createdAt;
+	private Date createdAt;
 
 	@Column(name = "date_end")
-	private Timestamp dateEnd;
+	private LocalDate dateEnd;
 
-	@OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", referencedColumnName = "id")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id")
 	private User user;
 
-	@ManyToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-	@JoinColumn(name = "team_id", referencedColumnName = "id")
-	private Team team;
+	@ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
+	@JoinColumn(name = "project_id", nullable = false)
+	private Project project;
 
 	public Task() {
 
@@ -76,6 +84,19 @@ public class Task implements Serializable {
 	public Task(TaskRequest taskRequest) {
 		this.name = taskRequest.getName();
 		this.description = taskRequest.getDescription();
-		this.dateEnd = taskRequest.getDateEnd();
+		this.dateEnd = new ConvertData().toDate(taskRequest.getDateEnd());
+		this.status = "NONSTATUS";
+		this.type = taskRequest.getType() == null ? "NONSTATUS" : taskRequest.getType();
+		this.contentSubmit = "null";
+	}
+
+	public Task updateTask(TaskRequest taskRequest) {
+		this.name = taskRequest.getName();
+		this.description = taskRequest.getDescription();
+		this.dateEnd = new ConvertData().toDate(taskRequest.getDateEnd());
+		this.status = taskRequest.getStatus();
+		this.type = taskRequest.getType();
+		this.contentSubmit = taskRequest.getContentSubmit();
+		return this;
 	}
 }
