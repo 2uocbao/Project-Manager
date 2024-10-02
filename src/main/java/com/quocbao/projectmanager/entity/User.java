@@ -70,10 +70,12 @@ public class User implements UserDetails {
 
 	@OneToMany
 	private Set<Friend> friends;
-	
+
 	@OneToMany
 	private List<Project> projects;
-	
+
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<Task> tasks;
 
 	public User() {
 
