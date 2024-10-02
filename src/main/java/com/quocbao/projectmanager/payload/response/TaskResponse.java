@@ -1,12 +1,15 @@
 package com.quocbao.projectmanager.payload.response;
 
-import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.quocbao.projectmanager.entity.Task;
 
+import lombok.Getter;
 import lombok.Setter;
 
+@Getter
 @Setter
 public class TaskResponse {
 
@@ -29,10 +32,10 @@ public class TaskResponse {
 	private String status;
 
 	@JsonProperty("created_at")
-	private Timestamp createdAt;
+	private Date createdAt;
 
 	@JsonProperty("date_end")
-	private Timestamp dateEnd;
+	private LocalDate dateEnd;
 
 	public TaskResponse() {
 
