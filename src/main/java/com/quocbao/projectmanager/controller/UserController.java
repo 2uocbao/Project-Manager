@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.quocbao.projectmanager.common.DataResponse;
 import com.quocbao.projectmanager.payload.request.FriendRequest;
 import com.quocbao.projectmanager.payload.request.LoginRequest;
+import com.quocbao.projectmanager.payload.request.ProjectRequest;
 import com.quocbao.projectmanager.payload.request.UserRequest;
 import com.quocbao.projectmanager.payload.response.UserResponse;
 import com.quocbao.projectmanager.service.UserService;
@@ -46,7 +47,7 @@ public class UserController {
 	public ResponseEntity<DataResponse> getUser(@RequestParam Long userId) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.getUser(userId));
 		entityModel.add(linkUpdateUser(userId, new UserRequest())).add(linkGetFriendsByUserId(userId))
-				.add(linkProjectsOfUser(userId, null));
+				.add(linkCreateProject(userId)).add(linkProjectsByUserId(userId, "INPROGRESS"));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "User creation request successful."),
 				HttpStatus.OK);
@@ -55,8 +56,8 @@ public class UserController {
 	@PutMapping("/{userId}")
 	public ResponseEntity<DataResponse> updateUser(@Valid @PathVariable Long userId,
 			@Valid @RequestBody UserRequest userRequest) {
-		EntityModel<UserResponse> entityModel = EntityModel.of(userService.updateUser(userId, userRequest))
-				.add(linkGetUser(userId)).add(linkGetFriendsByUserId(userId));
+		EntityModel<UserResponse> entityModel = EntityModel.of(userService.updateUser(userId, userRequest));
+		entityModel.add(linkGetUser(userId));
 		DataResponse dataResponse = new DataResponse(HttpStatus.OK.value(), entityModel,
 				"User information update successful.");
 		return new ResponseEntity<>(dataResponse, HttpStatus.OK);
@@ -66,8 +67,8 @@ public class UserController {
 	public ResponseEntity<DataResponse> login(@RequestBody LoginRequest loginRequest) {
 		UserResponse userResponse = userService.loginUser(loginRequest);
 		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse).add(linkGetUser(userResponse.getId()))
-				.add(linkUpdateUser(userResponse.getId(), new UserRequest()))
-				.add(linkGetFriendsByUserId(userResponse.getId()));
+				.add(linkGetFriendsByUserId(userResponse.getId())).add(linkCreateProject(userResponse.getId()))
+				.add(linkProjectsByUserId(userResponse.getId(), "INPROGRESS"));
 		return new ResponseEntity<>(new DataResponse(HttpStatus.ACCEPTED.value(), entityModel, "Login successful."),
 				HttpStatus.ACCEPTED);
 	}
@@ -75,8 +76,10 @@ public class UserController {
 	@PostMapping("/register")
 	public ResponseEntity<DataResponse> register(@Valid @RequestBody UserRequest userRequest) {
 		UserResponse userResponse = userService.registerUser(userRequest);
-		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse)
-				.add(linkUpdateUser(userResponse.getId(), new UserRequest()));
+		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse);
+		entityModel.add(linkGetUser(userResponse.getId())).add(linkGetFriendsByUserId(userResponse.getId()))
+				.add(linkCreateProject(userResponse.getId()))
+				.add(linkProjectsByUserId(userResponse.getId(), "INPROGRESS"));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Account creation request successful."),
 				HttpStatus.OK);
@@ -120,7 +123,7 @@ public class UserController {
 
 	private Link linkUpdateUser(Long userId, UserRequest userRequest) {
 		return linkTo(methodOn(UserController.class).updateUser(userId, userRequest)).withRel("update")
-				.withTitle("Update this user").withType("UPDATE");
+				.withTitle("Update this user").withType("PUT");
 	}
 
 	private Link linkGetFriendsByUserId(Long userId) {
@@ -128,8 +131,13 @@ public class UserController {
 				.withTitle("Get list friends of user by user id").withType("GET");
 	}
 
-	private Link linkProjectsOfUser(Long userId, String status) {
-		return linkTo(methodOn(ProjectController.class).getProjectsByStatusAndDate(userId, status)).withRel("projects")
-				.withTitle("Get list project of user by user id").withType("GET");
+	private Link linkProjectsByUserId(Long userId, String status) {
+		return linkTo(methodOn(ProjectController.class).getProjectsByStatus(userId, status)).withRel("projects")
+				.withTitle("Get list projects by user id").withType("GET");
+	}
+
+	private Link linkCreateProject(Long userId) {
+		return linkTo(methodOn(ProjectController.class).createProject(userId, new ProjectRequest())).withRel("projects")
+				.withTitle("Create a new project.").withType("POST");
 	}
 }
