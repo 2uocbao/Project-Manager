@@ -35,4 +35,8 @@ public class ProjectSpecification {
 			return criteriaBuilder.in(root.get(Project_.id)).value(subQuery);
 		};
 	}
+
+	public static Specification<Project> search(String keySearch) {
+		return (root, query, criteriaBuilder) -> criteriaBuilder.like(root.get(Project_.name), keySearch);
+	}
 }
