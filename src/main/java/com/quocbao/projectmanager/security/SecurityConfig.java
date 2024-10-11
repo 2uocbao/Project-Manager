@@ -2,6 +2,7 @@ package com.quocbao.projectmanager.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -37,7 +38,17 @@ public class SecurityConfig {
 				.requestMatchers("/app/**").permitAll()
 				.requestMatchers("/users/login").permitAll()
 				.requestMatchers("/users/register").permitAll()
+				
+				.requestMatchers(HttpMethod.PUT, "/users/{userId}/groups/**").hasRole("ADMIN")
+				.requestMatchers(HttpMethod.DELETE, "/users/{userId}/groups/**").hasRole("ADMIN")
+				
+				.requestMatchers(HttpMethod.PUT, "/users/{userId}/projects/**").hasRole("MANAGER")
+				.requestMatchers(HttpMethod.DELETE,"/users/{userId}/projects/**").hasRole("MANAGER")
 				.requestMatchers("/users/**").hasRole("USER")
+				
+				.requestMatchers(HttpMethod.POST, "/projects/{projectId}/task").hasRole("MANAGER")
+				.requestMatchers(HttpMethod.PUT, "/projects/{projectId}/task").hasRole("MANAGER")
+				.requestMatchers(HttpMethod.PUT, "/projects/{projectId}/task/{taskId}/commit_content").hasAnyRole("USER", "MANAGER")
 				.anyRequest().authenticated()
 
 		);
