@@ -1,14 +1,12 @@
 package com.quocbao.projectmanager.controller;
 
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
-
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.Link;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,6 +20,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.quocbao.projectmanager.common.DataResponse;
+import com.quocbao.projectmanager.common.LinkHateoas;
+import com.quocbao.projectmanager.common.PaginationResponse;
+import com.quocbao.projectmanager.elasticsearch.entity.ProjectES;
 import com.quocbao.projectmanager.payload.request.ProjectRequest;
 import com.quocbao.projectmanager.payload.response.ProjectResponse;
 import com.quocbao.projectmanager.service.ProjectService;
@@ -33,9 +34,11 @@ import jakarta.validation.Valid;
 public class ProjectController {
 
 	private ProjectService projectService;
+	private LinkHateoas linkHateoas;
 
-	public ProjectController(ProjectService projectService) {
+	public ProjectController(ProjectService projectService, LinkHateoas linkHateoas) {
 		this.projectService = projectService;
+		this.linkHateoas = linkHateoas;
 	}
 
 	@PostMapping()
@@ -43,7 +46,7 @@ public class ProjectController {
 			@RequestBody ProjectRequest projectRequest) {
 		ProjectResponse projectResponse = projectService.createProject(userId, projectRequest);
 		EntityModel<ProjectResponse> entityModel = EntityModel.of(projectResponse);
-		entityModel.add(linkProjectsByUserId(userId, "INPROGRESS"));
+		entityModel.add(linkHateoas.linkGetProjectsByUserId(userId, "PLANNING"));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Project creation request successful."),
 				HttpStatus.OK);
@@ -52,10 +55,10 @@ public class ProjectController {
 	@GetMapping("/{projectId}")
 	public ResponseEntity<DataResponse> getProject(@PathVariable Long userId, @PathVariable Long projectId) {
 		EntityModel<ProjectResponse> entityModel = EntityModel.of(projectService.getProject(userId, projectId));
-		entityModel.add(linkUpdateProject(userId, projectId, new ProjectRequest()))
-				.add(linkProjectsByUserId(userId, "INPRGRESS")).add(linkDeleteProject(userId, projectId))
-				.add(linkCreateTask(projectId))
-				.add(linkGetTasksByUserIdAndProjectIdAndStatusAndDate(userId, projectId, "INPROCESS"));
+		entityModel.add(linkHateoas.linkUpdateProject(userId, projectId))
+				.add(linkHateoas.linkGetProjectsByUserId(userId, "PLANNING"))
+				.add(linkHateoas.linkDeleteProject(userId, projectId)).add(linkHateoas.linkCreateTask(projectId))
+				.add(linkHateoas.linkGetTasksByUserIdAndProjectIdAndStatusAndDate(userId, projectId, "PLANNING"));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Request successful information project."),
 				HttpStatus.OK);
@@ -65,58 +68,61 @@ public class ProjectController {
 	public ResponseEntity<DataResponse> updateProject(@PathVariable Long userId, @Valid @PathVariable Long projectId,
 			@RequestBody ProjectRequest projectRequest) {
 		EntityModel<ProjectResponse> entityModel = EntityModel
-				.of(projectService.updateProject(projectId, projectRequest));
-		entityModel.add(linkGetProject(userId, projectId));
+				.of(projectService.updateProject(userId, projectId, projectRequest));
+		entityModel.add(linkHateoas.linkGetProject(userId, projectId));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Project information update successful."),
 				HttpStatus.OK);
 	}
 
+//	@GetMapping()
+//	public ResponseEntity<PaginationResponse<EntityModel<ProjectResponse>>> getProjectsByStatus(
+//			@PathVariable Long userId, @RequestParam(required = false, defaultValue = "PLANNING") String status,
+//			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+//			@RequestParam(defaultValue = "name") String sortField,
+//			@RequestParam(defaultValue = "asc") String sortDirection, @RequestParam(required = false) String search) {
+//
+//		Direction direction = Direction.fromString(sortDirection);
+//
+//		Page<ProjectResponse> pageProject = projectService.getProjectsByUserIdAndStatus(userId, status, search,
+//				PageRequest.of(page, size, direction, sortField));
+//
+//		List<EntityModel<ProjectResponse>> entityModels = pageProject.getContent().stream()
+//				.map(p -> EntityModel.of(p).add(linkHateoas.linkGetProject(userId, p.getId()))).toList();
+//
+//		PaginationResponse<EntityModel<ProjectResponse>> paginationResponse = new PaginationResponse<>(HttpStatus.OK,
+//				entityModels, pageProject.getPageable().getPageNumber(), pageProject.getSize(),
+//				pageProject.getTotalElements(), pageProject.getTotalPages(), pageProject.getSort().isSorted(),
+//				pageProject.getSort().isUnsorted(), pageProject.getSort().isEmpty());
+//
+//		return new ResponseEntity<>(paginationResponse, HttpStatus.OK);
+//	}
+
 	@GetMapping()
-	public ResponseEntity<DataResponse> getProjectsByStatus(@PathVariable Long userId,
-			@RequestParam(required = false, defaultValue = "INPROGRESS") String status) {
-		List<EntityModel<ProjectResponse>> entityModels = projectService.getProjectsByUserIdAndStatus(userId, status)
-				.stream().map(p -> EntityModel.of(p).add(linkGetProject(userId, p.getId()))).toList();
-		return new ResponseEntity<>(
-				new DataResponse(HttpStatus.OK.value(), entityModels, "Retrieve projects of user by condition."),
-				HttpStatus.OK);
+	public ResponseEntity<PaginationResponse<EntityModel<ProjectES>>> findProjectByUserIdAndStatusAndSearch(
+			@PathVariable Long userId, @RequestParam(required = false, defaultValue = "PLANNING") String status,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+			@RequestParam(defaultValue = "name") String sortField,
+			@RequestParam(defaultValue = "asc") String sortDirection, @RequestParam(required = false, defaultValue = "") String search) {
+
+		Page<ProjectES> pageProjectES = projectService.findByUserIdAndStatusAndKeySearch(userId, status, search,
+				PageRequest.of(page, size, Sort.by(Direction.fromString(sortDirection), sortField)));
+
+		List<EntityModel<ProjectES>> entityModels = pageProjectES.getContent().stream()
+				.map(p -> EntityModel.of(p).add(linkHateoas.linkGetProject(userId, Long.parseLong(p.getId()))))
+				.toList();
+
+		PaginationResponse<EntityModel<ProjectES>> paginationResponse = new PaginationResponse<>(HttpStatus.OK,
+				entityModels, pageProjectES.getPageable().getPageNumber(), pageProjectES.getSize(),
+				pageProjectES.getTotalElements(), pageProjectES.getTotalPages(), pageProjectES.getSort().isSorted(),
+				pageProjectES.getSort().isUnsorted(), pageProjectES.getSort().isEmpty());
+
+		return new ResponseEntity<>(paginationResponse, HttpStatus.OK);
 	}
 
 	@DeleteMapping("/{projectId}")
 	public ResponseEntity<DataResponse> deleteProject(@PathVariable Long userId, @PathVariable Long projectId) {
-		return new ResponseEntity<>(
-				new DataResponse(HttpStatus.OK.value(), projectService.deleteProject(projectId), "Request Successful"),
-				HttpStatus.OK);
-	}
-
-	private Link linkGetProject(Long userId, Long projectId) {
-		return linkTo(methodOn(ProjectController.class).getProject(userId, projectId)).withRel("get")
-				.withTitle("Retrieve info project").withType("GET");
-	}
-
-	private Link linkUpdateProject(Long userId, Long projectId, ProjectRequest projectRequest) {
-		return linkTo(methodOn(ProjectController.class).updateProject(userId, projectId, projectRequest)).withRel("put")
-				.withTitle("Update info project").withType("PUT");
-	}
-
-	private Link linkDeleteProject(Long userId, Long projectId) {
-		return linkTo(methodOn(ProjectController.class).deleteProject(userId, projectId)).withRel("del")
-				.withTitle("Delete a project").withType("DELETE");
-	}
-
-	private Link linkProjectsByUserId(Long userId, String status) {
-		return linkTo(methodOn(ProjectController.class).getProjectsByStatus(userId, status)).withRel("projects")
-				.withTitle("Get list projects by user id").withType("GET");
-	}
-
-	private Link linkCreateTask(Long projectId) {
-		return linkTo(methodOn(TaskController.class).createTask(projectId, null)).withRel("task")
-				.withTitle("Create a new task").withType("POST");
-	}
-
-	private Link linkGetTasksByUserIdAndProjectIdAndStatusAndDate(Long userId, Long projectId, String status) {
-		return linkTo(methodOn(TaskController.class).getTasksByUserIdAndProjectAndStatusAndDate(userId, projectId,
-				status, new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString())).withRel("Task")
-				.withTitle("Retrieve tasks of project by ID user, ID project and status").withType("GET");
+		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(),
+				projectService.deleteProject(userId, projectId), "Request Successful"), HttpStatus.OK);
 	}
 }
