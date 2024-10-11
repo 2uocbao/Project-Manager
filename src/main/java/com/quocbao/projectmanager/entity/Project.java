@@ -79,14 +79,13 @@ public class Project implements Serializable {
 		this.name = projectRequest.getName();
 		this.description = projectRequest.getDescription();
 		this.dateEnd = new ConvertData().toDate(projectRequest.getDateEnd());
-		this.status = projectRequest.getStatus();
+		this.status = "PLANNING";
 	}
 
 	public Project updateProject(ProjectRequest projectRequest) {
 		this.name = projectRequest.getName();
 		this.description = projectRequest.getDescription();
 		this.dateEnd = new ConvertData().toDate(projectRequest.getDateEnd());
-		this.status = projectRequest.getStatus();
 		return this;
 	}
 
