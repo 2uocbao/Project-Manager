@@ -1,7 +1,7 @@
 package com.quocbao.projectmanager.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 import com.quocbao.projectmanager.payload.request.LoginRequest;
@@ -20,7 +20,7 @@ public interface UserService extends UserDetailsService {
 
 	public String confirmFriendRequest(Long fromUser, Long toUser);
 
-	public List<UserResponse> getFriendsByUserId(Long userId);
-	
+	public Page<UserResponse> getFriendsByUserId(Long userId, Pageable pageable);
+
 	public String updatePassword(LoginRequest loginRequest);
 }
