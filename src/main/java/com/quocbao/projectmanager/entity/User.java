@@ -64,7 +64,7 @@ public class User implements UserDetails {
 	@Column(name = "password")
 	private String password;
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+	@ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.DETACH)
 	@JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private List<Role> roles;
 
@@ -76,6 +76,9 @@ public class User implements UserDetails {
 
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Task> tasks;
+	
+	@ManyToMany(mappedBy = "users", fetch = FetchType.LAZY, cascade = CascadeType.DETACH)
+    private List<Group> groups;
 
 	public User() {
 
