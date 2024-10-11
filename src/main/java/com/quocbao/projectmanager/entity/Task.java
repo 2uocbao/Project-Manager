@@ -85,7 +85,7 @@ public class Task implements Serializable {
 		this.name = taskRequest.getName();
 		this.description = taskRequest.getDescription();
 		this.dateEnd = new ConvertData().toDate(taskRequest.getDateEnd());
-		this.status = "NONSTATUS";
+		this.status = "PLANNING";
 		this.type = taskRequest.getType() == null ? "NONSTATUS" : taskRequest.getType();
 		this.contentSubmit = "null";
 	}
