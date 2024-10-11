@@ -1,15 +1,11 @@
 package com.quocbao.projectmanager.controller;
 
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
-
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.Link;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.quocbao.projectmanager.common.ConvertData;
 import com.quocbao.projectmanager.common.DataResponse;
+import com.quocbao.projectmanager.common.LinkHateoas;
+import com.quocbao.projectmanager.common.PaginationResponse;
 import com.quocbao.projectmanager.entity.Task;
 import com.quocbao.projectmanager.payload.request.TaskRequest;
 import com.quocbao.projectmanager.payload.response.TaskResponse;
@@ -34,17 +32,19 @@ import com.quocbao.projectmanager.service.TaskService;
 public class TaskController {
 
 	private TaskService taskService;
+	private LinkHateoas linkHateoas;
 
-	public TaskController(TaskService taskSerivce) {
+	public TaskController(TaskService taskSerivce, LinkHateoas linkHateoas) {
 		this.taskService = taskSerivce;
+		this.linkHateoas = linkHateoas;
 	}
 
 	@PostMapping("/task")
 	public ResponseEntity<DataResponse> createTask(@PathVariable Long projectId, @RequestBody TaskRequest taskRequest) {
 		TaskResponse taskResponse = taskService.createTask(projectId, taskRequest);
 		EntityModel<TaskResponse> entityModel = EntityModel.of(taskResponse);
-		entityModel.add(linkGetTask(projectId, taskResponse.getId()))
-				.add(linkGetTasksByUserIdAndProjectIdAndStatusAndDate(taskRequest.getUserId(), projectId, "NONSTATUS"));
+		entityModel.add(linkHateoas.linkGetTask(taskResponse.getId(), projectId)).add(linkHateoas
+				.linkGetTasksByUserIdAndProjectIdAndStatusAndDate(taskRequest.getUserId(), projectId, "PLANNING"));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Task creation request successful."),
 				HttpStatus.OK);
@@ -56,65 +56,56 @@ public class TaskController {
 		Long userId = task.getUser().getId();
 		TaskResponse taskResponse = new TaskResponse(task);
 		EntityModel<TaskResponse> entityModel = EntityModel.of(taskResponse);
-		entityModel.add(linkUpdateTask(projectId, taskId, null)).add(linkDeleteTask(taskId)).add(linkGetUser(userId))
-				.add(linkGetTasksByUserIdAndProjectIdAndStatusAndDate(userId, projectId, task.getStatus()));
+		entityModel.add(linkHateoas.linkUpdateTask(projectId, taskId, userId))
+				.add(linkHateoas.linkDeleteTask(projectId, task.getUser().getId(), taskId))
+				.add(linkHateoas.linkGetUser(userId)).add(linkHateoas.linkCommitContent(projectId, taskId));
 		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModel, "Retrieve info Task."),
 				HttpStatus.OK);
 	}
 
-	@PutMapping("/task/{taskId}")
+	@PutMapping("/users/{userId}/task/{taskId}")
 	public ResponseEntity<DataResponse> updateTask(@PathVariable Long projectId, @PathVariable Long taskId,
-			@RequestBody TaskRequest taskRequest) {
-		TaskResponse taskResponse = taskService.updateTask(taskId, taskRequest);
+			@PathVariable Long userId, @RequestBody TaskRequest taskRequest) {
+		TaskResponse taskResponse = taskService.updateTask(taskId, userId, taskRequest);
 		EntityModel<TaskResponse> entityModel = EntityModel.of(taskResponse);
-		entityModel.add(linkGetTask(projectId, taskId));
+		entityModel.add(linkHateoas.linkGetTask(taskId, projectId));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Update infomation request successful."),
 				HttpStatus.OK);
 	}
 
-	@DeleteMapping("/task/{taskId}")
-	public ResponseEntity<DataResponse> deleteTask(@PathVariable Long taskId) {
+	@PutMapping("/task/{taskId}/commit_content")
+	public ResponseEntity<DataResponse> commitContent(@PathVariable Long projectId, @PathVariable Long taskId,
+			@RequestBody TaskRequest taskRequest) {
+		TaskResponse taskResponse = taskService.commitContentTask(taskId, taskRequest);
+		EntityModel<TaskResponse> entityModel = EntityModel.of(taskResponse);
+		entityModel.add(linkHateoas.linkGetTask(taskId, projectId));
+		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModel, "Commit contenet successful."),
+				HttpStatus.OK);
+	}
+
+	@DeleteMapping("/users/{userId}/task/{taskId}")
+	public ResponseEntity<DataResponse> deleteTask(@PathVariable Long projectId, @PathVariable Long userId,
+			@PathVariable Long taskId) {
 		return new ResponseEntity<>(
-				new DataResponse(HttpStatus.OK.value(), taskService.deleteTask(taskId), "Request Successful."),
+				new DataResponse(HttpStatus.OK.value(), taskService.deleteTask(userId, taskId), "Request Successful."),
 				HttpStatus.OK);
 	}
 
 	@GetMapping("/users/{userId}/tasks")
-	public ResponseEntity<DataResponse> getTasksByUserIdAndProjectAndStatusAndDate(@PathVariable Long userId,
-			@PathVariable Long projectId, @RequestParam String status, @RequestParam String date) {
+	public ResponseEntity<PaginationResponse<EntityModel<TaskResponse>>> getTasksByUserIdAndProjectAndStatusAndDate(
+			@PathVariable Long userId, @PathVariable Long projectId,
+			@RequestParam(required = false, defaultValue = "PLANNING") String status, @RequestParam String date,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
 		LocalDate dateConvert = new ConvertData().toDate(date);
-		List<EntityModel<TaskResponse>> entityModels = taskService
-				.getTaskByUserIdAndProjectIdAndStatusAndDate(userId, projectId, status, dateConvert).stream()
-				.map(t -> EntityModel.of(t).add(linkGetTask(projectId, t.getId()))).toList();
-		return new ResponseEntity<>(
-				new DataResponse(HttpStatus.OK.value(), entityModels, "Get tasks by ID user, status, and date."),
-				HttpStatus.OK);
-	}
-
-	private Link linkGetUser(Long userId) {
-		return linkTo(methodOn(UserController.class).getUser(userId)).withRel("USER").withTitle("Get info user")
-				.withType("GET");
-	}
-
-	private Link linkGetTask(Long projectId, Long taskId) {
-		return linkTo(methodOn(TaskController.class).getTask(projectId, taskId)).withRel("get")
-				.withTitle("Retrieve info task").withType("GET");
-	}
-
-	private Link linkUpdateTask(Long projectId, Long taskId, TaskRequest taskRequest) {
-		return linkTo(methodOn(TaskController.class).updateTask(projectId, taskId, taskRequest)).withRel("update")
-				.withTitle("Update info task").withType("UPDATE");
-	}
-
-	private Link linkDeleteTask(Long taskId) {
-		return linkTo(methodOn(TaskController.class).deleteTask(taskId)).withRel("delete").withTitle("Delete a task")
-				.withType("DELETE");
-	}
-
-	private Link linkGetTasksByUserIdAndProjectIdAndStatusAndDate(Long userId, Long projectId, String status) {
-		return linkTo(methodOn(TaskController.class).getTasksByUserIdAndProjectAndStatusAndDate(userId, projectId,
-				status, new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString())).withRel("Task")
-				.withTitle("Retrieve tasks of project by ID user, ID project and status").withType("GET");
+		Page<TaskResponse> taskPage = taskService.getTaskByUserIdAndProjectIdAndStatusAndDate(userId, projectId, status,
+				dateConvert, PageRequest.of(page, size));
+		List<EntityModel<TaskResponse>> entityModels = taskPage.getContent().stream()
+				.map(t -> EntityModel.of(t).add(linkHateoas.linkGetTask(projectId, t.getId()))).toList();
+		PaginationResponse<EntityModel<TaskResponse>> paginationResponse = new PaginationResponse<>(HttpStatus.OK,
+				entityModels, taskPage.getPageable().getPageNumber(), taskPage.getSize(), taskPage.getTotalElements(),
+				taskPage.getTotalPages(), taskPage.getSort().isSorted(), taskPage.getSort().isUnsorted(),
+				taskPage.getSort().isEmpty());
+		return new ResponseEntity<>(paginationResponse, HttpStatus.OK);
 	}
 }
