@@ -47,4 +47,13 @@ public class GlobalExceptionHandler {
 		errorResponse.setDetail(ex.getMessage());
 		return new ResponseEntity<>(errorResponse, HttpStatus.UNPROCESSABLE_ENTITY);
 	}
+
+	@ExceptionHandler()
+	public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException ex) {
+		ErrorResponse errorResponse = new ErrorResponse();
+		errorResponse.setTitle("User does not have permission.");
+		errorResponse.setStatus(HttpStatus.UNAUTHORIZED.value());
+		errorResponse.setDetail(ex.getMessage());
+		return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+	}
 }
