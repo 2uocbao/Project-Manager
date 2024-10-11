@@ -21,7 +21,7 @@ public class WebSocketEventListener extends TextWebSocketHandler {
 	protected static final Logger LOGGER = LoggerFactory.getLogger(WebSocketEventListener.class);
 
 	// Store active users in a set
-	private static Set<String> userActive = new HashSet<>();
+	protected static Set<String> userActive = new HashSet<>();
 
 	// Handle web socket connection event
 	@EventListener
@@ -58,5 +58,9 @@ public class WebSocketEventListener extends TextWebSocketHandler {
 		}
 
 		return null;
+	}
+
+	public boolean isUserActive(String username) {
+		return userActive.contains(username);
 	}
 }
