@@ -1,7 +1,9 @@
 package com.quocbao.projectmanager.service;
 
 import java.time.LocalDate;
-import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.quocbao.projectmanager.entity.Task;
 import com.quocbao.projectmanager.payload.request.TaskRequest;
@@ -13,10 +15,12 @@ public interface TaskService {
 
 	public Task getTask(Long taskId);
 
-	public TaskResponse updateTask(Long taskId, TaskRequest taskRequest);
+	public TaskResponse updateTask(Long taskId, Long userId, TaskRequest taskRequest);
 
-	public String deleteTask(Long taskId);
+	public TaskResponse commitContentTask(Long taskId, TaskRequest taskRequest);
 
-	public List<TaskResponse> getTaskByUserIdAndProjectIdAndStatusAndDate(Long userId, Long projectId, String status,
-			LocalDate date);
+	public String deleteTask(Long userId, Long taskId);
+
+	public Page<TaskResponse> getTaskByUserIdAndProjectIdAndStatusAndDate(Long userId, Long projectId, String status,
+			LocalDate date, Pageable pageable);
 }
