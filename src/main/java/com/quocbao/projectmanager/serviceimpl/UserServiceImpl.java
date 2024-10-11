@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -86,12 +88,9 @@ public class UserServiceImpl implements UserService {
 	public UserResponse registerUser(UserRequest userRequest) {
 		isDuplicatePhoneNumber(userRequest.getPhoneNumber());
 		isValidPassword(userRequest.getPassword());
-		User user = new User();
-		user.setPhoneNumber(userRequest.getPhoneNumber());
-		user.setPassword(bCryptPasswordEncoder.encode(userRequest.getPassword()));
-		user.setRoles(getRoles((long) 1));
-		userRepository.save(user);
-		UserResponse userResponse = new UserResponse(user);
+		User user = User.builder().phoneNumber(userRequest.getPhoneNumber()).password(bCryptPasswordEncoder.encode(userRequest.getPassword()))
+				.roles(getRoles(1L)).build();
+		UserResponse userResponse = new UserResponse(userRepository.save(user));
 		userResponse.setToken(jwtTokenProvider.generateToken(user.userDetails(user)));
 		return userResponse;
 	}
@@ -107,14 +106,13 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public String confirmFriendRequest(Long fromUser, Long toUser) {
 		friendRepository.save(new Friend(fromUser, toUser));
-		return "Success";
+		return "Successful";
 	}
 
 	@Override
-	public List<UserResponse> getFriendsByUserId(Long userId) {
+	public Page<UserResponse> getFriendsByUserId(Long userId, Pageable pageable) {
 		Specification<User> specUser = Specification.where(UserSpecification.propertiesByUserId(userId));
-		List<User> users = userRepository.findAll(specUser);
-		return users.stream().map(UserResponse::new).toList();
+		return userRepository.findAll(specUser, pageable).map(UserResponse::new);
 	}
 
 	@Override
