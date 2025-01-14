@@ -1,9 +1,9 @@
 package com.quocbao.projectmanager.payload.response;
 
-import java.time.LocalDate;
-import java.util.Date;
+import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.quocbao.projectmanager.common.ConvertData;
 import com.quocbao.projectmanager.entity.Task;
 
 import lombok.Getter;
@@ -14,7 +14,13 @@ import lombok.Setter;
 public class TaskResponse {
 
 	@JsonProperty("id")
-	private Long id;
+	private UUID id;
+	
+	@JsonProperty("user_id")
+	private UUID userId;
+	
+	@JsonProperty("username")
+	private String username;
 
 	@JsonProperty("name")
 	private String name;
@@ -32,10 +38,10 @@ public class TaskResponse {
 	private String status;
 
 	@JsonProperty("created_at")
-	private Date createdAt;
+	private String createdAt;
 
 	@JsonProperty("date_end")
-	private LocalDate dateEnd;
+	private String dateEnd;
 
 	public TaskResponse() {
 
@@ -43,12 +49,13 @@ public class TaskResponse {
 
 	public TaskResponse(Task task) {
 		this.id = task.getId();
+		this.userId = task.getUser().getId();
 		this.name = task.getName();
 		this.description = task.getDescription();
 		this.type = task.getType();
 		this.contentSubmit = task.getContentSubmit();
-		this.status = task.getStatus();
-		this.createdAt = task.getCreatedAt();
-		this.dateEnd = task.getDateEnd();
+		this.status = task.getStatus().toString();
+		this.createdAt = ConvertData.timeStampToString(task.getCreatedAt());
+		this.dateEnd = ConvertData.timeStampToString(task.getDateEnd());
 	}
 }
