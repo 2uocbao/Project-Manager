@@ -1,66 +1,59 @@
 package com.quocbao.projectmanager.websocket;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
+import org.springframework.web.socket.messaging.SessionSubscribeEvent;
+import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 @Component
 public class WebSocketEventListener extends TextWebSocketHandler {
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger(WebSocketEventListener.class);
 
-	// Store active users in a set
-	protected static Set<String> userActive = new HashSet<>();
+	private final Map<String, String> userSessionMap = new ConcurrentHashMap<>();
+
+	private UserStatusService userStatusService;
+
+	public WebSocketEventListener(UserStatusService userStatusService) {
+		this.userStatusService = userStatusService;
+	}
 
 	// Handle web socket connection event
 	@EventListener
 	public void handleWebSocketConnectListener(SessionConnectedEvent sessionConnectedEvent) {
-		StompHeaderAccessor stompHeaderAccessor = StompHeaderAccessor.wrap(sessionConnectedEvent.getMessage());
-		String userId = getUserId(stompHeaderAccessor);
-		if (userId != null) {
-			userActive.add(userId);
-			LOGGER.info("User {} connected", userId);
-		} else {
-			LOGGER.info("User {} connection failed", userId);
-		}
+		userStatusService.addOnlineUser(sessionConnectedEvent.getUser());
 	}
 
 	// Handle web socket disconnection events
 	@EventListener
 	public void handleWebSocketDisconnectionListener(SessionDisconnectEvent sessionDisconnectEvent) {
-		StompHeaderAccessor stompHeaderAccessor = StompHeaderAccessor.wrap(sessionDisconnectEvent.getMessage());
-		String userId = getUserId(stompHeaderAccessor);
-		if (userId != null) {
-			userActive.remove(userId);
-			LOGGER.info("User {} Disconnected", userId);
-		}
+		userStatusService.removeOnlineUser(sessionDisconnectEvent.getUser());
 	}
 
-	private String getUserId(StompHeaderAccessor accessor) {
-		GenericMessage<?> generic = (GenericMessage<?>) accessor
-				.getHeader(SimpMessageHeaderAccessor.CONNECT_MESSAGE_HEADER);
-		if (generic != null) {
-			SimpMessageHeaderAccessor nativeAccessor = SimpMessageHeaderAccessor.wrap(generic);
-			List<String> userIdValue = nativeAccessor.getNativeHeader("userId");
-
-			return userIdValue == null ? null : userIdValue.stream().findFirst().orElse(null);
+	@EventListener
+	public void handleSubscribeEvent(SessionSubscribeEvent sessionSubscribeEvent) {
+		String subscribedChannel = (String) sessionSubscribeEvent.getMessage().getHeaders().get("simpDestination");
+		String simpSessionId = (String) sessionSubscribeEvent.getMessage().getHeaders().get("simpSessionId");
+		if (subscribedChannel == null) {
+			LOGGER.error("SUBSCRIBED TO NULL?? WAT?!");
+			return;
 		}
-
-		return null;
+		userSessionMap.put(simpSessionId, subscribedChannel);
+		userStatusService.addUserSubscribed(sessionSubscribeEvent.getUser(), subscribedChannel);
 	}
 
-	public boolean isUserActive(String username) {
-		return userActive.contains(username);
+	@EventListener
+	public void handleUnSubscribeEvent(SessionUnsubscribeEvent sessionUnsubscribeEvent) {
+		String simpSessionId = (String) sessionUnsubscribeEvent.getMessage().getHeaders().get("simpSessionId");
+		String unSubscribedChannel = userSessionMap.get(simpSessionId);
+		userStatusService.removeUserSubscribed(sessionUnsubscribeEvent.getUser(), unSubscribedChannel);
 	}
 }
