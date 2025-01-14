@@ -12,5 +12,13 @@ public class LoginRequest {
 
 	@JsonProperty("password")
 	private String password;
+	
+	@JsonProperty("newPassword")
+	private String newPassword;
+	
+	public LoginRequest(String username, String password) {
+		this.username = username;
+		this.password = password;
+	}
 
 }
