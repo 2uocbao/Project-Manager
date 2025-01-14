@@ -3,6 +3,7 @@ package com.quocbao.projectmanager.serviceimpl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -15,14 +16,12 @@ import org.springframework.stereotype.Service;
 import com.quocbao.projectmanager.entity.Role;
 import com.quocbao.projectmanager.entity.User;
 import com.quocbao.projectmanager.entity.User_;
-import com.quocbao.projectmanager.entity.Friend;
 import com.quocbao.projectmanager.exception.DuplicateException;
 import com.quocbao.projectmanager.exception.ResourceNotFoundException;
 import com.quocbao.projectmanager.payload.request.LoginRequest;
 import com.quocbao.projectmanager.payload.request.UserRequest;
 import com.quocbao.projectmanager.payload.response.UserResponse;
 import com.quocbao.projectmanager.repository.RoleRepository;
-import com.quocbao.projectmanager.repository.FriendRepository;
 import com.quocbao.projectmanager.repository.UserRepository;
 import com.quocbao.projectmanager.security.jwt.JwtTokenProvider;
 import com.quocbao.projectmanager.service.UserService;
@@ -32,32 +31,32 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolationException;
 
 @Service
+@Transactional
 public class UserServiceImpl implements UserService {
 
 	private static final String USERUNCORRECT = "Incorrect username or password";
 
 	private UserRepository userRepository;
+
 	private RoleRepository roleRepository;
-	private FriendRepository friendRepository;
 	private JwtTokenProvider jwtTokenProvider;
 	private BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
 
 	public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
-			JwtTokenProvider jwtTokenProvider, FriendRepository friendRepository) {
+			JwtTokenProvider jwtTokenProvider) {
 		this.userRepository = userRepository;
 		this.roleRepository = roleRepository;
 		this.jwtTokenProvider = jwtTokenProvider;
-		this.friendRepository = friendRepository;
 	}
 
 	@Override
-	public UserResponse getUser(Long userId) {
+	public UserResponse getUser(UUID userId) {
 		return userRepository.findById(userId).map(UserResponse::new)
 				.orElseThrow(() -> new ResourceNotFoundException("User not found with id:" + userId.toString()));
 	}
 
 	@Override
-	public UserResponse updateUser(Long userId, UserRequest userRequest) {
+	public UserResponse updateUser(UUID userId, UserRequest userRequest) {
 		return userRepository.findById(userId).map(u -> {
 			// if the requested data do not constant with data retrieve, check duplicate
 			if (!userRequest.getPhoneNumber().equals(u.getPhoneNumber())) {
@@ -85,11 +84,14 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
+	@Transactional
 	public UserResponse registerUser(UserRequest userRequest) {
+		isDuplicateEmail(userRequest.getEmail());
 		isDuplicatePhoneNumber(userRequest.getPhoneNumber());
-		isValidPassword(userRequest.getPassword());
-		User user = User.builder().phoneNumber(userRequest.getPhoneNumber()).password(bCryptPasswordEncoder.encode(userRequest.getPassword()))
-				.roles(getRoles(1L)).build();
+//		isValidPassword(userRequest.getPassword());
+		User user = new User(userRequest);
+		user.setPassword(bCryptPasswordEncoder.encode(userRequest.getPassword()));
+		user.setRoles(getRoles(1L));
 		UserResponse userResponse = new UserResponse(userRepository.save(user));
 		userResponse.setToken(jwtTokenProvider.generateToken(user.userDetails(user)));
 		return userResponse;
@@ -99,30 +101,55 @@ public class UserServiceImpl implements UserService {
 	@Transactional
 	@Cacheable(value = "username", key = "#username")
 	public UserDetails loadUserByUsername(String username) {
+		if(username.contains("@gmail.com")) {
+			Optional<User> user = userRepository.findOne(Specification.where(UserSpecification.findByColumn(User_.email, username)));
+			if(user.isEmpty()) {
+				return null;
+			}
+			return new User().userDetails(user.get());
+		}
 		User user = getUserByPhoneNumber(username).orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
 		return user.userDetails(user);
 	}
 
 	@Override
-	public String confirmFriendRequest(Long fromUser, Long toUser) {
-		friendRepository.save(new Friend(fromUser, toUser));
-		return "Successful";
-	}
-
-	@Override
-	public Page<UserResponse> getFriendsByUserId(Long userId, Pageable pageable) {
-		Specification<User> specUser = Specification.where(UserSpecification.propertiesByUserId(userId));
-		return userRepository.findAll(specUser, pageable).map(UserResponse::new);
-	}
-
-	@Override
-	public String updatePassword(LoginRequest loginRequest) {
+	public UserResponse updatePassword(LoginRequest loginRequest) {
 		isValidPassword(loginRequest.getPassword());
-		getUserByPhoneNumber(loginRequest.getUsername()).ifPresent(u -> {
-			u.setPassword(bCryptPasswordEncoder.encode(loginRequest.getPassword()));
+		getUserByPhoneNumber(loginRequest.getUsername()).map(u -> {
+			if(!bCryptPasswordEncoder.matches(loginRequest.getPassword(), u.getPassword())) {
+				throw new ResourceNotFoundException("Incorrect password");
+			}
+			u.setPassword(bCryptPasswordEncoder.encode(loginRequest.getNewPassword()));
 			userRepository.save(u);
+			return null;
 		});
-		return "Password update successful";
+		return null;
+	}
+
+	@Override
+	public Page<UserResponse> searchUser(UUID userId, String keySearch, Pageable pageable) {
+		if (!keySearch.isEmpty()) {
+			keySearch += "%";
+		}
+		Specification<User> spec = Specification.where(UserSpecification.searchUser(User_.firstName, keySearch))
+				.or(UserSpecification.searchUser(User_.lastName, keySearch))
+				.or(UserSpecification.searchUser(User_.email, keySearch)).and(UserSpecification.excludeUserId(userId))
+				.and(UserSpecification.searchUser(userId, false));
+		Page<User> users = userRepository.findAll(spec, pageable);
+		return users.map(UserResponse::new);
+	}
+
+	@Override
+	public Page<UserResponse> findFriend(UUID userId, String keySearch, Pageable pageable) {
+
+		keySearch += "%";
+
+		Specification<User> spec = Specification.where(UserSpecification.searchUser(User_.firstName, keySearch))
+				.or(UserSpecification.searchUser(User_.lastName, keySearch))
+				.or(UserSpecification.searchUser(User_.email, keySearch)).and(UserSpecification.excludeUserId(userId))
+				.and(UserSpecification.searchUser(userId, true));
+		Page<User> users = userRepository.findAll(spec, pageable);
+		return users.map(UserResponse::new);
 	}
 
 	private Optional<User> getUserByPhoneNumber(String phoneNumber) {
@@ -166,5 +193,4 @@ public class UserServiceImpl implements UserService {
 			throw new ConstraintViolationException("Password cannot be null or contain special characters", null);
 		}
 	}
-
 }
