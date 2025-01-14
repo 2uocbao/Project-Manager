@@ -1,14 +1,17 @@
 package com.quocbao.projectmanager.payload.request;
 
+import java.util.UUID;
+
+import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-public class FriendRequest {
+@Builder
+public class NotifiRequest {
 
-	private Long fromUser;
-	
-	private String fromUserName;
-
-	private Long toUser;
+	private String type;
+	private UUID sender;
+	private UUID receiver;
+	private String from;
 
 }
