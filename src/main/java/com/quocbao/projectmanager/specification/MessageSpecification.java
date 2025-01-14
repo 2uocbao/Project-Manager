@@ -3,8 +3,17 @@ package com.quocbao.projectmanager.specification;
 import org.springframework.data.jpa.domain.Specification;
 
 import com.quocbao.projectmanager.entity.Group;
+import com.quocbao.projectmanager.entity.Group_;
 import com.quocbao.projectmanager.entity.Message;
 import com.quocbao.projectmanager.entity.Message_;
+import com.quocbao.projectmanager.entity.User;
+import com.quocbao.projectmanager.entity.User_;
+
+import jakarta.persistence.Tuple;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 public class MessageSpecification {
 
@@ -15,4 +24,9 @@ public class MessageSpecification {
 	public static Specification<Message> getMessagesByGroupId(Group group) {
 		return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get(Message_.group), group);
 	}
+
+	public static Specification<Message> getMessageByUserId(User user) {
+		return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get(Message_.user), user);
+	}
+
 }
