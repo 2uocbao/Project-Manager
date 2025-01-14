@@ -1,5 +1,7 @@
 package com.quocbao.projectmanager.payload.response;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.quocbao.projectmanager.entity.User;
 
@@ -11,7 +13,7 @@ import lombok.Setter;
 public class UserResponse {
 
 	@JsonProperty("id")
-	private Long id;
+	private UUID id;
 
 	@JsonProperty("first_name")
 	private String firstName;
@@ -35,8 +37,8 @@ public class UserResponse {
 	public UserResponse(User user) {
 		this.id = user.getId();
 		this.firstName = user.getFirstName();
-		this.lastName = user.getLastName() == null ? null : user.getLastName();
-		this.phoneNumber = user.getPhoneNumber() == null ? null : user.getPhoneNumber();
+		this.lastName = user.getLastName();
+		this.phoneNumber = user.getPhoneNumber();
 		this.email = user.getEmail() == null ? null : user.getEmail();
 	}
 }
