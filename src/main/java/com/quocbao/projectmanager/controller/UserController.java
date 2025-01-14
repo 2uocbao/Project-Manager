@@ -1,6 +1,7 @@
 package com.quocbao.projectmanager.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,11 +40,11 @@ public class UserController {
 		this.linkHateoas = linkHateoas;
 	}
 
-	@GetMapping()
-	public ResponseEntity<DataResponse> getUser(@RequestParam Long userId) {
+	@GetMapping("/{userId}")
+	public ResponseEntity<DataResponse> getUser(@PathVariable UUID userId) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.getUser(userId));
-		entityModel.add(linkHateoas.linkUpdateUser(userId)).add(linkHateoas.linkGetFriendsByUserId(userId))
-				.add(linkHateoas.linkCreateProject(userId)).add(linkHateoas.linkGetProjectsByUserId(userId, "PLANNING"))
+		entityModel.add(linkHateoas.linkUpdateUser(userId)).add(linkHateoas.linkCreateProject(userId))
+				.add(linkHateoas.linkGetProjectsByUserId(userId))
 				.add(linkHateoas.linkGetGroupByUserId(userId));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "User creation request successful."),
@@ -51,7 +52,7 @@ public class UserController {
 	}
 
 	@PutMapping("/{userId}")
-	public ResponseEntity<DataResponse> updateUser(@Valid @PathVariable Long userId,
+	public ResponseEntity<DataResponse> updateUser(@Valid @PathVariable UUID userId,
 			@Valid @RequestBody UserRequest userRequest) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.updateUser(userId, userRequest));
 		entityModel.add(linkHateoas.linkGetUser(userId));
@@ -65,9 +66,8 @@ public class UserController {
 		UserResponse userResponse = userService.loginUser(loginRequest);
 		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse)
 				.add(linkHateoas.linkGetUser(userResponse.getId()))
-				.add(linkHateoas.linkGetFriendsByUserId(userResponse.getId()))
 				.add(linkHateoas.linkCreateProject(userResponse.getId()))
-				.add(linkHateoas.linkGetProjectsByUserId(userResponse.getId(), "PLANNING"))
+				.add(linkHateoas.linkGetProjectsByUserId(userResponse.getId()))
 				.add(linkHateoas.linkGetGroupByUserId(userResponse.getId()));
 		return new ResponseEntity<>(new DataResponse(HttpStatus.ACCEPTED.value(), entityModel, "Login successful."),
 				HttpStatus.ACCEPTED);
@@ -78,9 +78,9 @@ public class UserController {
 		UserResponse userResponse = userService.registerUser(userRequest);
 		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse);
 		entityModel.add(linkHateoas.linkGetUser(userResponse.getId()))
-				.add(linkHateoas.linkGetFriendsByUserId(userResponse.getId()))
+
 				.add(linkHateoas.linkCreateProject(userResponse.getId()))
-				.add(linkHateoas.linkGetProjectsByUserId(userResponse.getId(), "PLANNING"));
+				.add(linkHateoas.linkGetProjectsByUserId(userResponse.getId()));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "Account creation request successful."),
 				HttpStatus.OK);
@@ -92,25 +92,28 @@ public class UserController {
 				"User password update request success."), HttpStatus.OK);
 	}
 
-	@PostMapping("/confirm-friend-request")
-	public ResponseEntity<DataResponse> confirmFriendRequest(@RequestParam Long fromUserId,
-			@RequestParam Long toUserId) {
-		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(),
-				userService.confirmFriendRequest(fromUserId, toUserId), "Friend request successfull."), HttpStatus.OK);
-	}
-
-	@GetMapping("/{userId}/friends")
-	public ResponseEntity<PaginationResponse<EntityModel<UserResponse>>> getFriendsByUserId(@PathVariable Long userId,
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
-		Page<UserResponse> userResponsePage = userService.getFriendsByUserId(userId, PageRequest.of(page, size));
-		List<EntityModel<UserResponse>> entityModels = userResponsePage.getContent().stream()
-				.map(userResponse -> EntityModel.of(userResponse).add(linkHateoas.linkGetUser(userResponse.getId())))
-				.toList();
+	@GetMapping("/{userId}/search")
+	public ResponseEntity<PaginationResponse<EntityModel<UserResponse>>> searchUser(@PathVariable UUID userId,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+			@RequestParam String search) {
+		Page<UserResponse> userResponse = userService.searchUser(userId, search, PageRequest.of(page, size));
+		List<EntityModel<UserResponse>> entityModels = userResponse.getContent().stream().map(EntityModel::of).toList();
 		PaginationResponse<EntityModel<UserResponse>> paginationResponse = new PaginationResponse<>(HttpStatus.OK,
-				entityModels, userResponsePage.getPageable().getPageNumber(), userResponsePage.getSize(),
-				userResponsePage.getTotalElements(), userResponsePage.getTotalPages(),
-				userResponsePage.getSort().isSorted(), userResponsePage.getSort().isUnsorted(),
-				userResponsePage.getSort().isEmpty());
+				entityModels, userResponse.getPageable().getPageNumber(), userResponse.getSize(),
+				userResponse.getTotalElements(), userResponse.getTotalPages(), userResponse.getSort().isSorted(),
+				userResponse.getSort().isUnsorted(), userResponse.getSort().isEmpty());
+		return new ResponseEntity<>(paginationResponse, HttpStatus.OK);
+	}
+	
+	@GetMapping("/{userId}/find")
+	public ResponseEntity<PaginationResponse<EntityModel<UserResponse>>> findFriend(@PathVariable UUID userId, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+			@RequestParam(required = false) String search) {
+		Page<UserResponse> userResponse = userService.findFriend(userId, search, PageRequest.of(page, size));
+		List<EntityModel<UserResponse>> entityModels = userResponse.getContent().stream().map(EntityModel::of).toList();
+		PaginationResponse<EntityModel<UserResponse>> paginationResponse = new PaginationResponse<>(HttpStatus.OK,
+				entityModels, userResponse.getPageable().getPageNumber(), userResponse.getSize(),
+				userResponse.getTotalElements(), userResponse.getTotalPages(), userResponse.getSort().isSorted(),
+				userResponse.getSort().isUnsorted(), userResponse.getSort().isEmpty());
 		return new ResponseEntity<>(paginationResponse, HttpStatus.OK);
 	}
 }
