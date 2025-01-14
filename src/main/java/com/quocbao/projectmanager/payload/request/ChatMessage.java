@@ -1,37 +1,19 @@
 package com.quocbao.projectmanager.payload.request;
 
+import java.util.UUID;
+
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+@Builder
+@Getter
+@Setter
 public class ChatMessage {
-	
+
 	private String content;
-    private String sender;
-    private MessageType type;
-
-    public enum MessageType{
-    	CHAT, LEAVE, JOIN
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public String getSender() {
-        return sender;
-    }
-
-    public void setSender(String sender) {
-        this.sender = sender;
-    }
-    
-    public MessageType getType() {
-        return type;
-    }
-
-    public void setType(MessageType type) {
-        this.type = type;
-    }
+	private UUID sender;
+	private UUID receiver;
+	private String userSender;
 
 }
