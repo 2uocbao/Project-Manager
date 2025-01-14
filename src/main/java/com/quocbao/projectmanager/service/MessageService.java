@@ -1,14 +1,20 @@
 package com.quocbao.projectmanager.service;
 
-import java.util.List;
+import java.util.UUID;
 
-import com.quocbao.projectmanager.entity.Message;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import com.quocbao.projectmanager.payload.request.ChatMessage;
+import com.quocbao.projectmanager.payload.response.MessageResponse;
 
 public interface MessageService {
 
-	public void createMessage(Long groupId, Long userId, String message);
+	public void sendMessageToGroupId(ChatMessage chatMessage);
 
-	public List<Message> getMessagesByGroupId(Long groupId);
+	public void createMessage(UUID groupId, UUID userId, String message);
 
-	public String deleteMessageByUserId(Long messageId, Long userId);
+	public Page<MessageResponse> getMessagesByGroupId(UUID groupId, Pageable pageable);
+
+	public String deleteMessageByUserId(UUID messageId, UUID userId);
 }
