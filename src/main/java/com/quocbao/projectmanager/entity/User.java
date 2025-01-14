@@ -2,7 +2,7 @@ package com.quocbao.projectmanager.entity;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -43,8 +43,8 @@ public class User implements UserDetails {
 	 */
 	private static final long serialVersionUID = 1L;
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@GeneratedValue(strategy = GenerationType.UUID)
+	private UUID id;
 
 	@Column(name = "first_name")
 	private String firstName;
@@ -53,8 +53,8 @@ public class User implements UserDetails {
 	private String lastName;
 
 	@NotBlank(message = "Phone cannot be blank")
-	@Pattern(regexp = "^\\d{10,11}$", message = "Invalid Phone number")
-	@Column(name = "phone_number")
+//	@Pattern(regexp = "^\\d{10,11}$", message = "Invalid Phone number")
+	@Column(name = "phone_number", unique = true)
 	private String phoneNumber;
 
 	@Column(name = "email")
@@ -67,18 +67,10 @@ public class User implements UserDetails {
 	@ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.DETACH)
 	@JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private List<Role> roles;
-
-	@OneToMany
-	private Set<Friend> friends;
-
-	@OneToMany
-	private List<Project> projects;
-
-	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<Task> tasks;
 	
-	@ManyToMany(mappedBy = "users", fetch = FetchType.LAZY, cascade = CascadeType.DETACH)
-    private List<Group> groups;
+	@OneToMany(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id")
+	private List<Member> member;
 
 	public User() {
 
