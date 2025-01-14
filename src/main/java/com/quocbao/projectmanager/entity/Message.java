@@ -1,7 +1,8 @@
 package com.quocbao.projectmanager.entity;
 
 import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -31,8 +32,8 @@ public class Message implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@GeneratedValue(strategy = GenerationType.UUID)
+	private UUID id;
 
 	@Column(name = "message")
 	private String messageSent;
@@ -40,7 +41,7 @@ public class Message implements Serializable {
 	@CreationTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created_at")
-	private Date createdAt;
+	private LocalDateTime createdAt;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id", nullable = false)
@@ -54,7 +55,7 @@ public class Message implements Serializable {
 
 	}
 
-	public Message(Long groupId, Long userId, String message) {
+	public Message(UUID groupId, UUID userId, String message) {
 		this.group = Group.builder().id(groupId).build();
 		this.user = User.builder().id(userId).build();
 		this.messageSent = message;
