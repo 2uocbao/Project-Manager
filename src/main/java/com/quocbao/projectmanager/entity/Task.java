@@ -1,17 +1,20 @@
 package com.quocbao.projectmanager.entity;
 
 import java.io.Serializable;
-import java.time.LocalDate;
-import java.util.Date;
+import java.sql.Timestamp;
+import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 
 import com.quocbao.projectmanager.common.ConvertData;
+import com.quocbao.projectmanager.common.StatusEnum;
 import com.quocbao.projectmanager.payload.request.TaskRequest;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -41,8 +44,8 @@ public class Task implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@GeneratedValue(strategy = GenerationType.UUID)
+	private UUID id;
 
 	@NotBlank(message = "Name can not be blank")
 	@Column(name = "name")
@@ -59,15 +62,16 @@ public class Task implements Serializable {
 	private String contentSubmit;
 
 	@Column(name = "status")
-	private String status;
+	@Enumerated(EnumType.STRING)
+	private StatusEnum status;
 
 	@CreationTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created_at")
-	private Date createdAt;
+	private Timestamp createdAt;
 
 	@Column(name = "date_end")
-	private LocalDate dateEnd;
+	private Timestamp dateEnd;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id")
@@ -84,8 +88,8 @@ public class Task implements Serializable {
 	public Task(TaskRequest taskRequest) {
 		this.name = taskRequest.getName();
 		this.description = taskRequest.getDescription();
-		this.dateEnd = new ConvertData().toDate(taskRequest.getDateEnd());
-		this.status = "PLANNING";
+		this.dateEnd = ConvertData.toTimestamp(taskRequest.getDateEnd());
+		this.status = StatusEnum.PENDING;
 		this.type = taskRequest.getType() == null ? "NONSTATUS" : taskRequest.getType();
 		this.contentSubmit = "null";
 	}
@@ -93,8 +97,7 @@ public class Task implements Serializable {
 	public Task updateTask(TaskRequest taskRequest) {
 		this.name = taskRequest.getName();
 		this.description = taskRequest.getDescription();
-		this.dateEnd = new ConvertData().toDate(taskRequest.getDateEnd());
-		this.status = taskRequest.getStatus();
+		this.dateEnd = ConvertData.toTimestamp(taskRequest.getDateEnd());
 		this.type = taskRequest.getType();
 		this.contentSubmit = taskRequest.getContentSubmit();
 		return this;
