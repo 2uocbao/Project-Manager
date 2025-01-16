@@ -21,9 +21,6 @@ public class UserResponse {
 	@JsonProperty("last_name")
 	private String lastName;
 
-	@JsonProperty("phone_number")
-	private String phoneNumber;
-
 	@JsonProperty("email")
 	private String email;
 
@@ -38,7 +35,6 @@ public class UserResponse {
 		this.id = user.getId();
 		this.firstName = user.getFirstName();
 		this.lastName = user.getLastName();
-		this.phoneNumber = user.getPhoneNumber();
 		this.email = user.getEmail() == null ? null : user.getEmail();
 	}
 }
