@@ -23,8 +23,6 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -33,7 +31,7 @@ import lombok.Setter;
 @Builder
 @Entity
 @Getter
-@Table(name = "User")
+@Table(name = "user")
 @Setter
 @AllArgsConstructor
 public class User implements UserDetails {
@@ -52,11 +50,6 @@ public class User implements UserDetails {
 	@Column(name = "last_name")
 	private String lastName;
 
-	@NotBlank(message = "Phone cannot be blank")
-//	@Pattern(regexp = "^\\d{10,11}$", message = "Invalid Phone number")
-	@Column(name = "phone_number", unique = true)
-	private String phoneNumber;
-
 	@Column(name = "email")
 	@Email(message = "Invalid email format")
 	private String email;
@@ -67,7 +60,7 @@ public class User implements UserDetails {
 	@ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.DETACH)
 	@JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private List<Role> roles;
-	
+
 	@OneToMany(fetch = FetchType.LAZY)
 	@JoinColumn(name = "user_id")
 	private List<Member> member;
@@ -79,14 +72,12 @@ public class User implements UserDetails {
 	public User(UserRequest userRequest) {
 		this.firstName = userRequest.getFirstName();
 		this.lastName = userRequest.getLastName();
-		this.phoneNumber = userRequest.getPhoneNumber();
 		this.email = userRequest.getEmail();
 	}
 
 	public User updateUser(UserRequest userRequest) {
 		this.firstName = userRequest.getFirstName();
 		this.lastName = userRequest.getLastName();
-		this.phoneNumber = userRequest.getPhoneNumber();
 		this.email = userRequest.getEmail();
 		return this;
 	}
@@ -98,7 +89,7 @@ public class User implements UserDetails {
 
 	@Override
 	public String getUsername() {
-		return this.phoneNumber;
+		return this.email;
 	}
 
 	public UserDetails userDetails(User user) {
