@@ -1,6 +1,5 @@
 package com.quocbao.projectmanager.serviceimpl;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,8 +24,6 @@ import com.quocbao.projectmanager.service.MessageService;
 import com.quocbao.projectmanager.specification.MemberSpecification;
 import com.quocbao.projectmanager.specification.MessageSpecification;
 import com.quocbao.projectmanager.websocket.UserStatusService;
-
-import jakarta.persistence.Tuple;
 
 @Service
 public class MessageServiceImpl implements MessageService {

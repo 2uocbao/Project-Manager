@@ -33,7 +33,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 			Authentication authentication) throws IOException, ServletException {
 		if (authentication instanceof OAuth2AuthenticationToken) {
-			
+
 			OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
 			UserResponse userResponse;
 			ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
@@ -44,38 +44,33 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
 			String sub = oAuth2User.getAttribute("sub");
 
 			UserDetails userDetails = userService.loadUserByUsername(email);
-			
 
 			if (userDetails == null) {
 				UserRequest userRequest = new UserRequest();
 				userRequest.setFirstName(givenName);
 				userRequest.setLastName(familyName);
 				userRequest.setEmail(email);
-				userRequest.setPhoneNumber(sub);
 				userRequest.setPassword(sub);
 
 				userResponse = userService.registerUser(userRequest);
-				
-//				String json = objectWriter.writeValueAsString(userResponse);
-//
-//				response.setContentType("application/json");
-//				response.setStatus(HttpServletResponse.SC_OK);
-//
-//				response.getWriter().write(json);
+
+				String json = objectWriter.writeValueAsString(userResponse);
+				response.setContentType("application/json");
+				response.setStatus(HttpServletResponse.SC_OK);
+				response.getWriter().write(json);
+
 			} else {
-				
-//				response.sendRedirect(json);
+
 				LoginRequest loginRequest = new LoginRequest(sub, sub);
 				userResponse = userService.loginUser(loginRequest);
 				String json = objectWriter.writeValueAsString(userResponse);
-				
-//				response.setContentType("application/json");
-//				response.setStatus(HttpServletResponse.SC_OK);
-//				response.getWriter().write(json);
-				
+
+				response.setContentType("application/json");
+				response.setStatus(HttpServletResponse.SC_OK);
+				response.getWriter().write(json);
 
 			}
-			
+
 			response.sendRedirect("myapp://oauth2redirect");
 		}
 	}
