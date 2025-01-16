@@ -7,13 +7,9 @@ import org.springframework.data.jpa.domain.Specification;
 import com.quocbao.projectmanager.entity.Group_;
 import com.quocbao.projectmanager.entity.Member;
 import com.quocbao.projectmanager.entity.Member_;
-import com.quocbao.projectmanager.entity.Message_;
 import com.quocbao.projectmanager.entity.User;
 import com.quocbao.projectmanager.entity.User_;
 
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.metamodel.SingularAttribute;

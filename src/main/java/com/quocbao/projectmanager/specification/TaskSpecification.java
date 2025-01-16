@@ -9,10 +9,6 @@ import com.quocbao.projectmanager.entity.Task;
 import com.quocbao.projectmanager.entity.Task_;
 import com.quocbao.projectmanager.entity.User_;
 
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
-
 public class TaskSpecification {
 
 	private TaskSpecification() {

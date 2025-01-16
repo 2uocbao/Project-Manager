@@ -3,17 +3,9 @@ package com.quocbao.projectmanager.specification;
 import org.springframework.data.jpa.domain.Specification;
 
 import com.quocbao.projectmanager.entity.Group;
-import com.quocbao.projectmanager.entity.Group_;
 import com.quocbao.projectmanager.entity.Message;
 import com.quocbao.projectmanager.entity.Message_;
 import com.quocbao.projectmanager.entity.User;
-import com.quocbao.projectmanager.entity.User_;
-
-import jakarta.persistence.Tuple;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 
 public class MessageSpecification {
 
