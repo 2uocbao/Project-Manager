@@ -15,9 +15,6 @@ public class UserRequest {
 	@JsonProperty("last_name")
 	private String lastName;
 
-	@JsonProperty("phone_number")
-	private String phoneNumber;
-
 	@JsonProperty("email")
 	private String email;
 
