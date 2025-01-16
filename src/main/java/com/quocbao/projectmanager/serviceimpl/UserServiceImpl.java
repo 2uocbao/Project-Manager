@@ -58,10 +58,6 @@ public class UserServiceImpl implements UserService {
 	@Override
 	public UserResponse updateUser(UUID userId, UserRequest userRequest) {
 		return userRepository.findById(userId).map(u -> {
-			// if the requested data do not constant with data retrieve, check duplicate
-			if (!userRequest.getPhoneNumber().equals(u.getPhoneNumber())) {
-				isDuplicatePhoneNumber(userRequest.getPhoneNumber());
-			}
 			if (!userRequest.getEmail().equals(u.getEmail())) {
 				isDuplicateEmail(userRequest.getEmail());
 			}
@@ -73,7 +69,7 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public UserResponse loginUser(LoginRequest loginRequest) {
-		User user = getUserByPhoneNumber(loginRequest.getUsername())
+		User user = getUserByEmail(loginRequest.getUsername())
 				.orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
 		if (!bCryptPasswordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
 			throw new ResourceNotFoundException(USERUNCORRECT);
@@ -87,8 +83,7 @@ public class UserServiceImpl implements UserService {
 	@Transactional
 	public UserResponse registerUser(UserRequest userRequest) {
 		isDuplicateEmail(userRequest.getEmail());
-		isDuplicatePhoneNumber(userRequest.getPhoneNumber());
-//		isValidPassword(userRequest.getPassword());
+		isValidPassword(userRequest.getPassword());
 		User user = new User(userRequest);
 		user.setPassword(bCryptPasswordEncoder.encode(userRequest.getPassword()));
 		user.setRoles(getRoles(1L));
@@ -108,14 +103,14 @@ public class UserServiceImpl implements UserService {
 			}
 			return new User().userDetails(user.get());
 		}
-		User user = getUserByPhoneNumber(username).orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
+		User user = getUserByEmail(username).orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
 		return user.userDetails(user);
 	}
 
 	@Override
 	public UserResponse updatePassword(LoginRequest loginRequest) {
 		isValidPassword(loginRequest.getPassword());
-		getUserByPhoneNumber(loginRequest.getUsername()).map(u -> {
+		getUserByEmail(loginRequest.getUsername()).map(u -> {
 			if(!bCryptPasswordEncoder.matches(loginRequest.getPassword(), u.getPassword())) {
 				throw new ResourceNotFoundException("Incorrect password");
 			}
@@ -152,8 +147,8 @@ public class UserServiceImpl implements UserService {
 		return users.map(UserResponse::new);
 	}
 
-	private Optional<User> getUserByPhoneNumber(String phoneNumber) {
-		Specification<User> spec = Specification.where(UserSpecification.findByColumn(User_.phoneNumber, phoneNumber));
+	private Optional<User> getUserByEmail(String email) {
+		Specification<User> spec = Specification.where(UserSpecification.findByColumn(User_.email, email));
 		return userRepository.findOne(spec);
 	}
 
@@ -161,14 +156,6 @@ public class UserServiceImpl implements UserService {
 		List<Role> roles = new ArrayList<>();
 		roles.add(roleRepository.findById(roleId).orElse(Role.builder().id((roleId)).build()));
 		return roles;
-	}
-
-	private void isDuplicatePhoneNumber(String phoneNumber) {
-		if (userRepository
-				.count(Specification.where(UserSpecification.findByColumn(User_.phoneNumber, phoneNumber))) > 0) {
-			throw new DuplicateException(
-					"The phone number you entered is already registered. Please try a different number.");
-		}
 	}
 
 	private void isDuplicateEmail(String email) {
