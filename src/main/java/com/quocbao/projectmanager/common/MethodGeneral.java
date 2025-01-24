@@ -15,8 +15,6 @@ public class MethodGeneral {
 	}
 
 	public void validatePermission(UUID userId, UUID currentUserId) {
-//		System.out.println(userId);
-//		System.out.println(currentUserId);
 		if (!Objects.equals(userId, currentUserId)) {
 			throw new UnauthorizedException("User does not have permission.");
 		}
