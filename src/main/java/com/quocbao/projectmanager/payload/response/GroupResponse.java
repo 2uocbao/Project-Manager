@@ -36,7 +36,7 @@ public class GroupResponse {
 	public GroupResponse(Group group) {
 		id = group.getId();
 		name = group.getName();
-//		time = group.getCreatedAt();
+		time = group.getCreatedAt();
 	}
 
 }
