@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.quocbao.projectmanager.common.DataResponse;
 import com.quocbao.projectmanager.common.LinkHateoas;
 import com.quocbao.projectmanager.common.PaginationResponse;
-import com.quocbao.projectmanager.entity.Group;
 import com.quocbao.projectmanager.payload.response.GroupResponse;
 import com.quocbao.projectmanager.payload.response.UserResponse;
 import com.quocbao.projectmanager.service.GroupService;
@@ -39,9 +38,8 @@ public class GroupController {
 
 	@PostMapping("/groups")
 	public ResponseEntity<DataResponse> createGroup(@PathVariable UUID userId, @RequestParam UUID withUser) {
-		Group group = groupService.createGroup(userId, withUser);
-		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), group, "Group creation successful."),
-				HttpStatus.OK);
+		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), groupService.createGroup(userId, withUser),
+				"Group creation successful."), HttpStatus.OK);
 	}
 
 	@GetMapping("/groups")
@@ -95,7 +93,7 @@ public class GroupController {
 				HttpStatus.OK);
 	}
 
-	@DeleteMapping("/groups/{groupId}/del")
+	@DeleteMapping("/groups/{groupId}/delete")
 	public ResponseEntity<DataResponse> delMember(@PathVariable UUID userId, @PathVariable UUID groupId,
 			@RequestParam UUID memberId) {
 		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), null,
@@ -107,8 +105,7 @@ public class GroupController {
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
 			@RequestParam(defaultValue = "null") String keySearch) {
 		Page<UserResponse> usersPage = groupService.getUsersConnect(userId, PageRequest.of(page, size), keySearch);
-		List<EntityModel<UserResponse>> entityModels = usersPage.getContent().stream().map(EntityModel::of)
-				.toList();
+		List<EntityModel<UserResponse>> entityModels = usersPage.getContent().stream().map(EntityModel::of).toList();
 		PaginationResponse<EntityModel<UserResponse>> paginationResponse = new PaginationResponse<>(HttpStatus.OK,
 				entityModels, usersPage.getNumber(), usersPage.getTotalPages(), usersPage.getTotalElements(),
 				usersPage.getSize(), usersPage.getSort().isSorted(), usersPage.getSort().isUnsorted(),
