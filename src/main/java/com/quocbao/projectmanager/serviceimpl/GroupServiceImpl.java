@@ -12,17 +12,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import com.quocbao.projectmanager.common.RoleEnum;
 import com.quocbao.projectmanager.entity.Group;
 import com.quocbao.projectmanager.entity.Member;
-import com.quocbao.projectmanager.entity.Member.Role;
+import com.quocbao.projectmanager.entity.Role;
 import com.quocbao.projectmanager.entity.User;
 import com.quocbao.projectmanager.exception.ResourceNotFoundException;
 import com.quocbao.projectmanager.payload.response.GroupResponse;
 import com.quocbao.projectmanager.payload.response.UserResponse;
 import com.quocbao.projectmanager.repository.GroupRepository;
 import com.quocbao.projectmanager.repository.MemberRepository;
+import com.quocbao.projectmanager.repository.RoleRepository;
+import com.quocbao.projectmanager.repository.UserRepository;
 import com.quocbao.projectmanager.service.GroupService;
 import com.quocbao.projectmanager.specification.MemberSpecification;
+import com.quocbao.projectmanager.specification.RoleSpecification;
 
 import jakarta.persistence.Tuple;
 import jakarta.transaction.Transactional;
@@ -32,20 +36,26 @@ public class GroupServiceImpl implements GroupService {
 
 	private GroupRepository groupRepository;
 	private MemberRepository memberRepository;
+	private UserRepository userRepository;
+	private RoleRepository roleRepository;
 
-	public GroupServiceImpl(GroupRepository groupRepository, MemberRepository memberRepository) {
+	public GroupServiceImpl(GroupRepository groupRepository, MemberRepository memberRepository,
+			RoleRepository roleRepository, UserRepository userRepository) {
 		this.groupRepository = groupRepository;
 		this.memberRepository = memberRepository;
+		this.roleRepository = roleRepository;
+		this.userRepository = userRepository;
 	}
 
 	@Override
 	@Transactional
-	public Group createGroup(UUID userId, UUID withUser) {
+	public GroupResponse createGroup(UUID userId, UUID withUser) {
+		assignRoleIfNotPresent(User.builder().id(userId).build());
 		Set<Member> members = new HashSet<>();
 		Group group = groupRepository.save(new Group("null", members));
-		members.add(new Member(group.getId(), userId, Role.ADMIN));
-		members.add(new Member(group.getId(), withUser, Role.ADMIN));
-		return groupRepository.save(group);
+		members.add(new Member(group.getId(), userId));
+		members.add(new Member(group.getId(), withUser));
+		return new GroupResponse(group);
 	}
 
 	// Optimize, JPASpecificationExcuter
@@ -58,15 +68,15 @@ public class GroupServiceImpl implements GroupService {
 
 	@Override
 	public Group updateGroup(UUID userId, UUID groupId, String name) {
+		Group group = groupRepository.findById(groupId)
+				.orElseThrow(() -> new ResourceNotFoundException("Request failed."));
 		Specification<Member> specification;
 		List<UUID> groupIds = new ArrayList<>();
 		groupIds.add(groupId);
 		specification = MemberSpecification.findMemberByGroupId(groupIds)
 				.and(MemberSpecification.findMemberByUserId(userId));
 		Member member = memberRepository.findOne(specification).get();
-		if (member.getRole().equals(Role.ADMIN)) {
-			Group group = groupRepository.findById(groupId)
-					.orElseThrow(() -> new ResourceNotFoundException("Request failed."));
+		if (member.getUser().getRoles().stream().anyMatch(role -> role.getName().equals(RoleEnum.ADMIN.toString()))) {
 			group.setName(name);
 			return groupRepository.save(group);
 		}
@@ -76,15 +86,15 @@ public class GroupServiceImpl implements GroupService {
 
 	@Override
 	public String deleteGroup(UUID userId, UUID groupId) {
+		Group group = groupRepository.findById(groupId)
+				.orElseThrow(() -> new ResourceNotFoundException("Request failed."));
 		Specification<Member> specification;
 		List<UUID> groupIds = new ArrayList<>();
 		groupIds.add(groupId);
 		specification = MemberSpecification.findMemberByGroupId(groupIds)
 				.and(MemberSpecification.findMemberByUserId(userId));
 		Member member = memberRepository.findOne(specification).get();
-		if (member.getRole().equals(Role.ADMIN)) {
-			Group group = groupRepository.findById(groupId)
-					.orElseThrow(() -> new ResourceNotFoundException("Request failed."));
+		if (member.getUser().getRoles().stream().anyMatch(role -> role.getName().equals(RoleEnum.ADMIN.toString()))) {
 			groupRepository.delete(group);
 			return "Successful";
 		}
@@ -97,15 +107,15 @@ public class GroupServiceImpl implements GroupService {
 		List<UUID> groupIds = new ArrayList<>();
 		groupIds.add(groupId);
 		specification = MemberSpecification.findMemberByGroupId(groupIds)
+				.and(MemberSpecification.findMemberByUserId(memberId));
+		if (!memberRepository.findOne(specification).isEmpty()) {
+			return "Successful";
+		}
+		specification = MemberSpecification.findMemberByGroupId(groupIds)
 				.and(MemberSpecification.findMemberByUserId(userId));
 		Member member = memberRepository.findOne(specification).get();
-		if (member.getRole().equals(Role.ADMIN)) {
-			specification = MemberSpecification.findMemberByGroupId(groupIds)
-					.and(MemberSpecification.findMemberByUserId(memberId));
-			if (!memberRepository.findOne(specification).isEmpty()) {
-				return "ok";
-			}
-			memberRepository.save(new Member(groupId, memberId, Role.MEMBER));
+		if (member.getUser().getRoles().stream().anyMatch(role -> role.getName().equals(RoleEnum.ADMIN.toString()))) {
+			memberRepository.save(new Member(groupId, memberId));
 			return "Successful";
 		}
 		return "Request failed";
@@ -119,7 +129,7 @@ public class GroupServiceImpl implements GroupService {
 		specification = MemberSpecification.findMemberByGroupId(groupIds)
 				.and(MemberSpecification.findMemberByUserId(userId));
 		Member member = memberRepository.findOne(specification).get();
-		if (member.getRole().equals(Role.ADMIN)) {
+		if (member.getUser().getRoles().stream().anyMatch(role -> role.getName().equals(RoleEnum.ADMIN.toString()))) {
 			memberRepository.delete(MemberSpecification.findMemberByUserId(memberId));
 			return "Successful";
 		}
@@ -146,6 +156,28 @@ public class GroupServiceImpl implements GroupService {
 				.and(MemberSpecification.excludeUserId(userId));
 		Page<Member> groupMembers = memberRepository.findAll(groupMembersSpecification, pageable);
 		return groupMembers.map(t -> new UserResponse(t.getUser()));
+	}
+
+	private void assignRoleIfNotPresent(User user) {
+
+		User userInfo = userRepository.findById(user.getId()).get();
+		List<Role> roles = userInfo.getRoles();
+
+		Role role = roleRepository.findOne(Specification.where(RoleSpecification.findByName(RoleEnum.ADMIN.toString())))
+				.orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+
+		Boolean isExistRole = false;
+		for (Role r : roles) {
+			if (r.getName().contains(role.getName())) {
+				isExistRole = true;
+				break;
+			}
+		}
+
+		if (Boolean.FALSE.equals(isExistRole)) {
+			userInfo.getRoles().add(role);
+		}
+
 	}
 
 }

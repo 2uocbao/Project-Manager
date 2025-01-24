@@ -55,7 +55,8 @@ public class TaskServiceImpl implements TaskService {
 
 	@Override
 	public TaskResponse getTask(UUID taskId) {
-		Task task = taskRepository.findOne(Specification.where(TaskSpecification.getTaskDetailCustom(taskId))).get();
+		Task task = taskRepository.findOne(Specification.where(TaskSpecification.getTaskDetailCustom(taskId)))
+				.orElseThrow(() -> new ResourceNotFoundException("Task not found"));
 		TaskResponse taskResponse = new TaskResponse(task);
 		taskResponse.setUserId(task.getUser().getId());
 		taskResponse.setUsername(task.getUser().getFirstName() + " " + task.getUser().getLastName());
@@ -65,10 +66,6 @@ public class TaskServiceImpl implements TaskService {
 	@Override
 	public TaskResponse updateTask(UUID taskId, UUID userId, TaskRequest taskRequest) {
 		return taskRepository.findById(taskId).map(t -> {
-			if (Boolean.FALSE.equals(isAdminProject(userId, t.getProject().getUser().getId()))) {
-				t.setContentSubmit(taskRequest.getContentSubmit());
-				return new TaskResponse(taskRepository.save(t));
-			}
 			t.updateTask(taskRequest);
 			return new TaskResponse(taskRepository.save(t));
 		}).orElseThrow(() -> new ResourceNotFoundException("Task not found for update."));
@@ -77,6 +74,7 @@ public class TaskServiceImpl implements TaskService {
 	@Override
 	public TaskResponse commitContentTask(UUID taskId, TaskRequest taskRequest) {
 		return taskRepository.findById(taskId).map(t -> {
+			// Make sure the user in charge of the task
 			methodGeneral.validatePermission(taskRequest.getUserId(), t.getUser().getId());
 			t.setContentSubmit(taskRequest.getContentSubmit());
 			t.setStatus(StatusEnum.DONE);
@@ -87,6 +85,7 @@ public class TaskServiceImpl implements TaskService {
 	@Override
 	public String deleteTask(UUID userId, UUID taskId) {
 		return taskRepository.findById(taskId).map(t -> {
+			// Make sure the user is an administrator of the project
 			methodGeneral.validatePermission(userId, t.getProject().getUser().getId());
 			taskRepository.delete(Task.builder().id(taskId).build());
 			return "Request Successful";
@@ -95,7 +94,8 @@ public class TaskServiceImpl implements TaskService {
 
 	@Override
 	public Page<TaskResponse> getTasks(UUID userId, UUID projectId, String status, Pageable pageable) {
-		Project project = projectRepository.findById(projectId).get();
+		Project project = projectRepository.findById(projectId)
+				.orElseThrow(() -> new ResourceNotFoundException("This project does not exist"));
 		if (Boolean.TRUE.equals(isAdminProject(userId, project.getUser().getId()))) {
 			return listTasksByAdminProject(projectId, status, pageable).map(TaskResponse::new);
 		}
@@ -128,13 +128,16 @@ public class TaskServiceImpl implements TaskService {
 	}
 
 	private Specification<Task> byStatus(UUID userId, UUID projectId, StatusEnum status) {
-		UUID userIdAdminProject = projectRepository.findById(projectId).get().getUser().getId();
+		UUID userIdAdminProject = projectRepository.findById(projectId)
+				.orElseThrow(() -> new ResourceNotFoundException("This project does not exist")).getUser().getId();
+
 		if (Boolean.TRUE.equals(isAdminProject(userId, userIdAdminProject))) {
 			return Specification.where(TaskSpecification.getTaskByProjectId(projectId))
 					.and(TaskSpecification.getTaskByStatus(status.toString()));
 		}
 		return Specification.where(TaskSpecification.getTaskByUserId(userId))
-				.and(TaskSpecification.getTaskByProjectId(projectId)).and(TaskSpecification.getTaskByStatus(status.toString()));
+				.and(TaskSpecification.getTaskByProjectId(projectId))
+				.and(TaskSpecification.getTaskByStatus(status.toString()));
 	}
 
 	private Task assignTaskToNewUser(Task task, UUID toUserId) {

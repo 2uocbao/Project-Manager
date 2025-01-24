@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.quocbao.projectmanager.common.ConvertData;
 import com.quocbao.projectmanager.common.MethodGeneral;
+import com.quocbao.projectmanager.common.RoleEnum;
 import com.quocbao.projectmanager.common.StatusEnum;
 //import com.quocbao.projectmanager.elasticsearch.entity.ProjectES;
 //import com.quocbao.projectmanager.elasticsearch.repository.ProjectESRepository;
@@ -25,14 +26,19 @@ import com.quocbao.projectmanager.repository.RoleRepository;
 import com.quocbao.projectmanager.repository.UserRepository;
 import com.quocbao.projectmanager.service.ProjectService;
 import com.quocbao.projectmanager.specification.ProjectSpecification;
+import com.quocbao.projectmanager.specification.RoleSpecification;
 
 @Service
 public class ProjectServiceImpl implements ProjectService {
 
 	private ProjectRepository projectRepository;
+
 //	private ProjectESRepository projectESRepository;
+
 	private UserRepository userRepository;
+
 	private RoleRepository roleRepository;
+
 	private MethodGeneral methodGeneral;
 
 	public ProjectServiceImpl(ProjectRepository projectRepository, UserRepository userRepository,
@@ -65,7 +71,7 @@ public class ProjectServiceImpl implements ProjectService {
 	@Override
 	public ProjectResponse updateProject(UUID userId, UUID projectId, ProjectRequest projectRequest) {
 		return projectRepository.findById(projectId).map(p -> {
-//			methodGeneral.validatePermission(userId, p.getUser().getId());
+			methodGeneral.validatePermission(userId, p.getUser().getId());
 			p = p.updateProject(projectRequest);
 			projectRepository.save(p);
 //			updateProjectES(p);
@@ -132,7 +138,9 @@ public class ProjectServiceImpl implements ProjectService {
 
 	private void assignRoleIfNotPresent(User user) {
 		List<Role> roles = user.getRoles();
-		Role role = roleRepository.findById(2L).orElseThrow(() -> new ResourceNotFoundException("Role not found"));
+		Role role = roleRepository
+				.findOne(Specification.where(RoleSpecification.findByName(RoleEnum.MANAGER.toString())))
+				.orElseThrow(() -> new ResourceNotFoundException("Role not found"));
 		if (!roles.contains(role)) {
 			user.getRoles().add(role);
 			userRepository.save(user);

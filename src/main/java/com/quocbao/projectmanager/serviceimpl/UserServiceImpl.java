@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -13,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.quocbao.projectmanager.common.RoleEnum;
 import com.quocbao.projectmanager.entity.Role;
 import com.quocbao.projectmanager.entity.User;
 import com.quocbao.projectmanager.entity.User_;
@@ -25,6 +25,7 @@ import com.quocbao.projectmanager.repository.RoleRepository;
 import com.quocbao.projectmanager.repository.UserRepository;
 import com.quocbao.projectmanager.security.jwt.JwtTokenProvider;
 import com.quocbao.projectmanager.service.UserService;
+import com.quocbao.projectmanager.specification.RoleSpecification;
 import com.quocbao.projectmanager.specification.UserSpecification;
 
 import jakarta.transaction.Transactional;
@@ -39,7 +40,9 @@ public class UserServiceImpl implements UserService {
 	private UserRepository userRepository;
 
 	private RoleRepository roleRepository;
+
 	private JwtTokenProvider jwtTokenProvider;
+
 	private BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
 
 	public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository,
@@ -69,7 +72,7 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public UserResponse loginUser(LoginRequest loginRequest) {
-		User user = getUserByEmail(loginRequest.getUsername())
+		User user = getByEmail(loginRequest.getUsername())
 				.orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
 		if (!bCryptPasswordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
 			throw new ResourceNotFoundException(USERUNCORRECT);
@@ -80,38 +83,28 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	@Transactional
-	public UserResponse registerUser(UserRequest userRequest) {
+	public User registerUser(UserRequest userRequest) {
 		isDuplicateEmail(userRequest.getEmail());
-		isValidPassword(userRequest.getPassword());
 		User user = new User(userRequest);
 		user.setPassword(bCryptPasswordEncoder.encode(userRequest.getPassword()));
-		user.setRoles(getRoles(1L));
+		user.setRoles(getRoles());
 		UserResponse userResponse = new UserResponse(userRepository.save(user));
 		userResponse.setToken(jwtTokenProvider.generateToken(user.userDetails(user)));
-		return userResponse;
+		return user;
 	}
 
 	@Override
-	@Transactional
-	@Cacheable(value = "username", key = "#username")
+//	@Cacheable(value = "username", key = "#username")
 	public UserDetails loadUserByUsername(String username) {
-		if(username.contains("@gmail.com")) {
-			Optional<User> user = userRepository.findOne(Specification.where(UserSpecification.findByColumn(User_.email, username)));
-			if(user.isEmpty()) {
-				return null;
-			}
-			return new User().userDetails(user.get());
-		}
-		User user = getUserByEmail(username).orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
+		User user = getByEmail(username).orElseThrow(() -> new ResourceNotFoundException(USERUNCORRECT));
 		return user.userDetails(user);
 	}
 
 	@Override
 	public UserResponse updatePassword(LoginRequest loginRequest) {
 		isValidPassword(loginRequest.getPassword());
-		getUserByEmail(loginRequest.getUsername()).map(u -> {
-			if(!bCryptPasswordEncoder.matches(loginRequest.getPassword(), u.getPassword())) {
+		getByEmail(loginRequest.getUsername()).map(u -> {
+			if (!bCryptPasswordEncoder.matches(loginRequest.getPassword(), u.getPassword())) {
 				throw new ResourceNotFoundException("Incorrect password");
 			}
 			u.setPassword(bCryptPasswordEncoder.encode(loginRequest.getNewPassword()));
@@ -147,14 +140,20 @@ public class UserServiceImpl implements UserService {
 		return users.map(UserResponse::new);
 	}
 
-	private Optional<User> getUserByEmail(String email) {
+	@Override
+	public UserResponse getUserByEmail(String email) {
+		return new UserResponse(getByEmail(email).get());
+	}
+
+	private Optional<User> getByEmail(String email) {
 		Specification<User> spec = Specification.where(UserSpecification.findByColumn(User_.email, email));
 		return userRepository.findOne(spec);
 	}
 
-	private List<Role> getRoles(Long roleId) {
+	private List<Role> getRoles() {
 		List<Role> roles = new ArrayList<>();
-		roles.add(roleRepository.findById(roleId).orElse(Role.builder().id((roleId)).build()));
+		roles.add(roleRepository.findOne(Specification.where(RoleSpecification.findByName(RoleEnum.USER.toString())))
+				.orElse(Role.builder().name(RoleEnum.USER.toString()).build()));
 		return roles;
 	}
 
