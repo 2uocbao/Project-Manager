@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,12 +39,22 @@ public class UserController {
 		this.linkHateoas = linkHateoas;
 	}
 
+	@GetMapping("/oauth2")
+	public String oauth2User(@RequestParam String email, @RequestParam String jwtToken) {
+		return email + jwtToken;
+	}
+
+	@GetMapping("/email/{email}")
+	public ResponseEntity<DataResponse> getUserByEmail(@PathVariable String email) {
+		EntityModel<UserResponse> entityModel = EntityModel.of(userService.getUserByEmail(email));
+		return new ResponseEntity<>(new DataResponse(HttpStatus.OK.value(), entityModel, "Successful"), HttpStatus.OK);
+	}
+
 	@GetMapping("/{userId}")
 	public ResponseEntity<DataResponse> getUser(@PathVariable UUID userId) {
 		EntityModel<UserResponse> entityModel = EntityModel.of(userService.getUser(userId));
 		entityModel.add(linkHateoas.linkUpdateUser(userId)).add(linkHateoas.linkCreateProject(userId))
-				.add(linkHateoas.linkGetProjectsByUserId(userId))
-				.add(linkHateoas.linkGetGroupByUserId(userId));
+				.add(linkHateoas.linkGetProjectsByUserId(userId)).add(linkHateoas.linkGetGroupByUserId(userId));
 		return new ResponseEntity<>(
 				new DataResponse(HttpStatus.OK.value(), entityModel, "User creation request successful."),
 				HttpStatus.OK);
@@ -73,18 +82,18 @@ public class UserController {
 				HttpStatus.ACCEPTED);
 	}
 
-	@PostMapping("/register")
-	public ResponseEntity<DataResponse> register(@Valid @RequestBody UserRequest userRequest) {
-		UserResponse userResponse = userService.registerUser(userRequest);
-		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse);
-		entityModel.add(linkHateoas.linkGetUser(userResponse.getId()))
-
-				.add(linkHateoas.linkCreateProject(userResponse.getId()))
-				.add(linkHateoas.linkGetProjectsByUserId(userResponse.getId()));
-		return new ResponseEntity<>(
-				new DataResponse(HttpStatus.OK.value(), entityModel, "Account creation request successful."),
-				HttpStatus.OK);
-	}
+//	@PostMapping("/register")
+//	public ResponseEntity<DataResponse> register(@Valid @RequestBody UserRequest userRequest) {
+//		UserResponse userResponse = userService.registerUser(userRequest);
+//		EntityModel<UserResponse> entityModel = EntityModel.of(userResponse);
+//		entityModel.add(linkHateoas.linkGetUser(userResponse.getId()))
+//
+//				.add(linkHateoas.linkCreateProject(userResponse.getId()))
+//				.add(linkHateoas.linkGetProjectsByUserId(userResponse.getId()));
+//		return new ResponseEntity<>(
+//				new DataResponse(HttpStatus.OK.value(), entityModel, "Account creation request successful."),
+//				HttpStatus.OK);
+//	}
 
 	@PatchMapping("/updatePassword")
 	public ResponseEntity<DataResponse> updatePassword(@Valid @RequestBody LoginRequest loginRequest) {
@@ -104,9 +113,10 @@ public class UserController {
 				userResponse.getSort().isUnsorted(), userResponse.getSort().isEmpty());
 		return new ResponseEntity<>(paginationResponse, HttpStatus.OK);
 	}
-	
+
 	@GetMapping("/{userId}/find")
-	public ResponseEntity<PaginationResponse<EntityModel<UserResponse>>> findFriend(@PathVariable UUID userId, @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+	public ResponseEntity<PaginationResponse<EntityModel<UserResponse>>> findFriend(@PathVariable UUID userId,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
 			@RequestParam(required = false) String search) {
 		Page<UserResponse> userResponse = userService.findFriend(userId, search, PageRequest.of(page, size));
 		List<EntityModel<UserResponse>> entityModels = userResponse.getContent().stream().map(EntityModel::of).toList();
