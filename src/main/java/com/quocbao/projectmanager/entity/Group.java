@@ -1,7 +1,7 @@
 package com.quocbao.projectmanager.entity;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,7 +46,7 @@ public class Group implements Serializable {
 	@CreationTimestamp
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created_at")
-	private LocalDateTime createdAt;
+	private Timestamp createdAt;
 
 	@OneToMany(mappedBy = "group", cascade = CascadeType.ALL)
 	private List<Message> messages;
