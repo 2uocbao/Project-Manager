@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
+import com.quocbao.projectmanager.entity.User;
 import com.quocbao.projectmanager.payload.request.LoginRequest;
 import com.quocbao.projectmanager.payload.request.UserRequest;
 import com.quocbao.projectmanager.payload.response.UserResponse;
@@ -14,11 +15,13 @@ public interface UserService extends UserDetailsService {
 
 	public UserResponse getUser(UUID userId);
 
+	public UserResponse getUserByEmail(String email);
+
 	public UserResponse updateUser(UUID userId, UserRequest userRequest);
 
 	public UserResponse loginUser(LoginRequest loginRequest);
 
-	public UserResponse registerUser(UserRequest userRequest);
+	public User registerUser(UserRequest userRequest);
 
 	public UserResponse updatePassword(LoginRequest loginRequest);
 
