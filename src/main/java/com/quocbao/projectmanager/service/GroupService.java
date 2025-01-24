@@ -11,7 +11,7 @@ import com.quocbao.projectmanager.payload.response.UserResponse;
 
 public interface GroupService {
 
-	public Group createGroup(UUID userId, UUID withUser);
+	public GroupResponse createGroup(UUID userId, UUID withUser);
 
 	public Page<GroupResponse> getGroupsByUserId(UUID userId, Pageable pageable, String keySearch);
 
@@ -24,6 +24,6 @@ public interface GroupService {
 	public String removeUserInGroup(UUID userId, UUID memberId, UUID groupId);
 
 	public Page<UserResponse> getUsersInGroup(UUID groupId, Pageable pageable, String keySearch);
-	
+
 	public Page<UserResponse> getUsersConnect(UUID userId, Pageable pageable, String keySearch);
 }
