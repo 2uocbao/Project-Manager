@@ -23,6 +23,8 @@ import com.quocbao.projectmanager.service.TaskService;
 import com.quocbao.projectmanager.specification.TaskSpecification;
 import com.quocbao.projectmanager.websocket.PushNotificationService;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class TaskServiceImpl implements TaskService {
 
@@ -58,16 +60,18 @@ public class TaskServiceImpl implements TaskService {
 		Task task = taskRepository.findOne(Specification.where(TaskSpecification.getTaskDetailCustom(taskId)))
 				.orElseThrow(() -> new ResourceNotFoundException("Task not found"));
 		TaskResponse taskResponse = new TaskResponse(task);
-		taskResponse.setUserId(task.getUser().getId());
 		taskResponse.setUsername(task.getUser().getFirstName() + " " + task.getUser().getLastName());
 		return taskResponse;
 	}
 
 	@Override
+	@Transactional
 	public TaskResponse updateTask(UUID taskId, UUID userId, TaskRequest taskRequest) {
 		return taskRepository.findById(taskId).map(t -> {
-			t.updateTask(taskRequest);
-			return new TaskResponse(taskRepository.save(t));
+			methodGeneral.validatePermission(taskRequest.getUserId(), t.getProject().getUser().getId());
+			t = t.updateTask(taskRequest);
+			taskRepository.save(t);
+			return new TaskResponse(t);
 		}).orElseThrow(() -> new ResourceNotFoundException("Task not found for update."));
 	}
 
